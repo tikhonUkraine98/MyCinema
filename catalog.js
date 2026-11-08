@@ -302,8 +302,9 @@ function reload() {
   setLoading(false);
   let hasKey=false;
   try{hasKey=!!localStorage.getItem("mycinema_tmdb_token_v1");}catch(_){}
+  byId("exploreNoKey").hidden=hasKey;
   if(!hasKey) {
-    message("Для каталогу введи TMDB API-ключ у налаштуваннях. Ключ зберігається локально.");
+    message("Потрібен TMDB API-ключ. Натисни «Отримати ключ TMDB» або «Пошук відео без ключа».");
     return;
   }
   loadNext();
@@ -327,6 +328,11 @@ byId("openCatalogExplore").addEventListener("click",()=>{switchToCatalog();genre
 byId("exploreMore").addEventListener("click",loadNext);
 byId("exploreFilters").addEventListener("submit",event=>{event.preventDefault();reload();});
 byId("exploreSettings").addEventListener("click",()=>byId("openSettings").click());
+byId("exploreAddKey").addEventListener("click",()=>byId("openSettings").click());
+byId("exploreWithoutKey").addEventListener("click",()=>byId("openSources").click());
+byId("settingsDialog").addEventListener("close",()=>{
+  if(!byId("catalogExploreScreen").hidden){reload();genres();}
+});
 byId("exploreType").addEventListener("change",reload);
 byId("exploreMode").addEventListener("change",reload);
 byId("exploreSort").addEventListener("change",reload);
