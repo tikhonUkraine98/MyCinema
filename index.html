@@ -831,6 +831,10 @@ if (state.current) {
         <input id="sourceQuery" type="search" placeholder="Введи назву серіалу" required minlength="3" maxlength="140" aria-label="Назва для пошуку відкритого відео">
         <button id="sourceSearch" class="action primary" type="submit">Знайти файли</button>
       </form>
+      <div class="source-browse-bar">
+        <button class="action primary" id="sourceBrowse" type="button">Переглянути відкритий відеоархів</button>
+        <button class="action" id="sourceBrowseMore" type="button" hidden>Наступна сторінка архіву</button>
+      </div>
       <p class="micro" id="sourceStatus" role="status" aria-live="polite"></p>
       <div id="sourceResults"></div>
       <div class="dialog-buttons">
