@@ -19,6 +19,9 @@ assert.match(availabilityScript, /onloadedmetadata/, "Metadata probe missing");
 assert.match(availabilityScript, /onseeked/, "Media seek verification missing");
 assert.match(availabilityScript, /MIN_EPISODE_SECONDS/, "Short preview filter missing");
 assert.match(availabilityScript, /MAX_BATCH_AUTO/, "Automatic scan limit missing");
+const offlineScript = readFileSync(new URL("../offline.js", import.meta.url), "utf8");
+new vm.Script(offlineScript, {filename:"offline.js"});
+assert.match(html, /src="\.\/offline\.js"/, "Offline playback module missing");
 const sourcesScript = readFileSync(new URL("../sources.js", import.meta.url), "utf8");
 new vm.Script(sourcesScript, {filename:"sources.js"});
 assert.match(html, /src="\.\/sources\.js"/, "Open video source module missing");
@@ -37,6 +40,7 @@ for (const id of [
   "catalogExploreScreen","openCatalogExplore","exploreFilters","exploreResults","exploreMode",
   "openSources","sourceDialog","sourceSearchForm","sourceQuery","sourceSearch",
   "sourceStatus","sourceResults","closeSources","sourceBrowse","sourceBrowseMore",
+  "openOfflineFiles","offlineFiles",
   "exploreProgress","exploreMore","exploreApply","exploreSettings","exploreEmpty",
   "exploreType","exploreSort","exploreGenre","exploreRating",
   "downloadEpisode","downloadSeason","cancelDownload","downloadProgress"
@@ -45,6 +49,8 @@ assert.match(catalogScript,/checkProviders/, "Catalog lacks per-show availabilit
 assert.match(catalogScript,/checkOpenArchive/, "Catalog lacks licensed file verification");
 assert.match(catalogScript,/archiveMatch/, "Catalog cannot surface downloadable sources");
 assert.match(catalogScript,/with_watch_monetization_types/, "Watch-region filter absent");
+assert.match(offlineScript,/createObjectURL/, "Offline file playback missing");
+assert.match(offlineScript,/offline_progress/, "Offline resume missing");
 assert.match(downloaderScript,/showSaveFilePicker/, "Episode downloader missing");
 assert.match(downloaderScript,/showDirectoryPicker/, "Season downloader missing");
 assert.match(downloaderScript,/fetch\(url/, "Streaming download missing");
