@@ -42,7 +42,7 @@ function stop(){
 }
 function show(n,autoplay=false){
   if(n<0||n>=queue.length)return;
-  persistCurrent();
+  if(objectUrl)persistCurrent();
   clearUrl();
   index=n;
   const file=queue[index];
