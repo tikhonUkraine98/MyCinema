@@ -1,0 +1,15 @@
+# API keys and local configuration
+.env
+.env.*
+!.env.example
+config.local.*
+secrets.*
+# Local downloads must not be committed
+downloads/
+Videos/
+Series/
+# Editor / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
