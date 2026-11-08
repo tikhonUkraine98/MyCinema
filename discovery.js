@@ -337,4 +337,6 @@
     section.append(link);
     root.append(section);
   }
+  // Read-only functions shared with the verified streaming catalog.
+  window.MyCinemaDiscovery = {tmdb, showDetails, openSearch, region, imageSrc};
 })();
