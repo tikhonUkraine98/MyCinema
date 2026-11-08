@@ -38,3 +38,17 @@
 #settingsForm input{font:inherit;background:#0b111a;color:var(--text);border:1px solid #3a4555;border-radius:9px;padding:10px 12px;width:100%}
 @media(max-width:720px){.search-row{flex-wrap:wrap}.search-row input{width:100%;flex-basis:100%}.discovery-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.discovery-detail{padding:14px}.discovery-detail-head{grid-template-columns:90px 1fr;gap:12px}.discovery-episode{grid-template-columns:24px 1fr}.discovery-episode small{display:none}}
 @media(max-width:390px){.discovery-grid{grid-template-columns:1fr 1fr;gap:8px}.discovery-item{padding:7px;min-height:220px}}
+
+/* Каталог: фільтруємо за країною, типом перегляду та підтверджуємо сервіси для кожної картки */
+.catalog-explore-filters{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin-bottom:18px;padding:17px;border:1px solid var(--stroke);background:var(--panel);border-radius:15px}
+.catalog-explore-filters label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12px;font-weight:600;flex:1 1 125px}
+.catalog-explore-filters select{width:100%;min-height:41px;padding:9px 12px;font:inherit;font-size:13px;color:var(--text);border:1px solid #354459;border-radius:9px;background:#0b111a}
+.catalog-result{cursor:default;min-height:0}
+.catalog-result:hover{transform:none}
+.catalog-result-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:auto}
+.catalog-result-actions .action{font-size:12px;min-height:35px;padding:6px 10px;flex:1}
+.catalog-provider{font-size:12px;color:var(--muted);line-height:1.45}
+.catalog-verified{color:var(--good);font-size:12px;font-weight:700}
+#exploreProgress{margin:12px 0 24px}
+#exploreMore{margin-top:14px}
+@media(max-width:580px){.catalog-explore-filters{padding:10px;gap:8px}.catalog-explore-filters label{flex-basis:calc(50% - 4px)}.catalog-explore-filters .action{flex:1}.catalog-result-actions{flex-direction:column}}
