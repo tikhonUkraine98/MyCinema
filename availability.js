@@ -6,6 +6,8 @@ const FAILURE_TTL = 10 * 60 * 1000;
 const MIN_EPISODE_SECONDS = 120; // короткі paywall-заглушки не вважаємо серією
 const TIMEOUT_MS = 12000;
 const MAX_CACHE_ENTRIES = 600;
+const MAX_BATCH_AUTO = 24;
+const MAX_BATCH_ALL = 60;
 let cache = {};
 let scanning = false;
 
@@ -119,12 +121,18 @@ async function scan(series, onUpdate, onProgress, all=false) {
       }
     }
   }
+  const pendingCount = urls.length;
+  const batchLimit = all ? MAX_BATCH_ALL : MAX_BATCH_AUTO;
+  urls.length = Math.min(urls.length,batchLimit);
   let index = 0;
   let completed = 0;
   const report = () => {
     if (typeof onProgress === "function") {
-      onProgress(urls.length ? "Перевірено " + completed + " із " + urls.length +
-        " нових відеоджерел. Перевірка підтверджує лише відтворення." :
+      onProgress(urls.length ?
+        "Перевірено " + completed + " із " + urls.length +
+        " у цій партії (усього очікували: " + pendingCount + "). " +
+        (pendingCount > urls.length ? "Натисни перевірку ще раз, щоб продовжити. " : "") +
+        "Підтверджено лише вибіркове відтворення відео, не повне завантаження." :
         "Поточні перевірки завершено. За потреби скористайся кнопкою «Перевірити всі серії».");
     }
   };
@@ -160,8 +168,8 @@ function initialize() {
   const update = text => { label.textContent = text; };
   const run = allSources => scan(state.series, redraw, update, allSources);
   only.addEventListener("change", redraw);
-  first.addEventListener("click", () => {reset(); redraw(); run(false);});
-  all.addEventListener("click", () => {reset(); redraw(); run(true);});
+  first.addEventListener("click", () => run(false));
+  all.addEventListener("click", () => run(true));
   // Automatically check the first episode of each saved season when opening.
   if (!document.getElementById("libraryScreen").hidden) run(false);
 }
