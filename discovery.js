@@ -83,6 +83,7 @@
   }
 
   function openSearch() {
+    byId("catalogExploreScreen").hidden = true;
     saveProgress();
     player.pause();
     byId("libraryScreen").hidden = true;
