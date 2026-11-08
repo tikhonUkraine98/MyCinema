@@ -229,5 +229,32 @@ DOM("sourceSearchForm").addEventListener("submit",e=>{e.preventDefault();submit(
 DOM("openSources").addEventListener("click",()=>openWithTitle(""));
 DOM("closeSources").addEventListener("click",()=>DOM("sourceDialog").close());
 DOM("sourceDialog").addEventListener("close",()=>{serial++;busy=false;DOM("sourceSearch").disabled=false;});
-window.MyCinemaSources={openWithTitle,find,checkFile,helpers:{titleMatches,licenseInfo,videoFiles}};
+function addToLibrary(item,files) {
+  if (!item || !item.license || !Array.isArray(files) || !files.length ||
+    typeof state==="undefined" || typeof persist!=="function")throw Error("Джерело некоректне.");
+  const urls=files.map(x=>x.url).filter(url=>typeof url==="string" &&
+    url.startsWith(IA+"/download/")).slice(0,60);
+  if(!urls.length)throw Error("Не знайдено дозволених відеофайлів.");
+  const title=String(item.title||"Без назви").slice(0,120);
+  let show=state.series.find(x=>x.title.toLocaleLowerCase("uk")===title.toLocaleLowerCase("uk"));
+  if(!show) {
+    if(state.series.length>=100)throw Error("Бібліотека заповнена (100 серіалів).");
+    show={id:"archive-"+Date.now()+"-"+Math.random().toString(36).slice(2,8),
+      title,seasons:[]};
+    state.series.push(show);
+  }
+  let seasonNo=1;
+  while(show.seasons.some(x=>x.number===seasonNo))seasonNo++;
+  if(seasonNo>30)throw Error("У серіалі вже 30 сезонів.");
+  show.seasons.push({
+    number:seasonNo,quality:"Archive MP4/WebM",
+    episodeUrls:urls,
+    rights:{name:item.license.name,url:item.license.url,creator:item.creator||"",
+      itemUrl:item.itemUrl,verifiedAt:Date.now()}
+  });
+  persist();
+  if(typeof showLibrary==="function")showLibrary();
+  return {title,season:seasonNo,count:urls.length};
+}
+window.MyCinemaSources={openWithTitle,find,checkFile,addToLibrary,helpers:{titleMatches,licenseInfo,videoFiles}};
 })();
