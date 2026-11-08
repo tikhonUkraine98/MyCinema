@@ -68,6 +68,7 @@ async function writeRemoteToFile(url,fileHandle,label,onProgress) {
       if(typeof onProgress==="function")onProgress(written,length);
     }
     if(length>0 && written!==length)throw Error(label+": завантажено "+written+" байтів замість "+length+".");
+    if(written<MIN_MEDIA_BYTES)throw Error(label+": замало відеоданих ("+prettyBytes(written)+").");
     await file.close();
     return written;
   }catch(error) {
@@ -124,7 +125,7 @@ async function downloadAll() {
     if(checks)await checks.scan([c.show],()=>{},status,true);
     const output=await folder.getDirectoryHandle(safeName(c.show.title),{create:true});
     const seasonDir=await output.getDirectoryHandle("Season "+c.season.number,{create:true});
-    let done=0,skipped=0,failed=0;
+    let done=0,skipped=0,failed=0,existing=0;
     for(let index=0;index<c.season.episodeUrls.length;index++){
       if(controller.signal.aborted)throw new DOMException("Скасовано","AbortError");
       const url=c.season.episodeUrls[index];
@@ -133,6 +134,8 @@ async function downloadAll() {
         "E"+String(index+1).padStart(2,"0")+extension(url);
       try{
         const handle=await seasonDir.getFileHandle(name,{create:true});
+        const present=await handle.getFile();
+        if(present.size>0) { existing++; continue; }
         await writeRemoteToFile(url,handle,name,(written,total)=>{
           status("Серія "+(index+1)+"/"+c.season.episodeUrls.length+": "+prettyBytes(written)+
             (total?" із "+prettyBytes(total):"")+". Збережено: "+done);
@@ -144,7 +147,8 @@ async function downloadAll() {
         status("Не вдалося зберегти "+name+": "+(error.message||"помилка"),true);
       }
     }
-    status("Готово. Завантажено "+done+" серій; не підтверджено "+skipped+"; помилок "+failed+".");
+    status("Готово. Завантажено "+done+" серій; уже було "+existing+
+      "; не підтверджено "+skipped+"; помилок "+failed+".");
   }catch(error) {
     if(error.name!=="AbortError")status(error.message||"Помилка збереження.",true);
     else status("Завантаження скасовано.");
