@@ -46,42 +46,77 @@ function prettyBytes(bytes) {
 }
 async function writeRemoteToFile(url,fileHandle,label,onProgress) {
   enoughEvidence(url);
-  const res=await fetch(url,{mode:"cors",signal:controller.signal,redirect:"follow"});
+  const old=await fileHandle.getFile();
+  let start=old.size;
+  let total=0;
+  if(start>0) {
+    // A local existing file is not automatically considered complete.
+    const head=await fetch(url,{method:"HEAD",mode:"cors",signal:controller.signal,redirect:"follow"});
+    if(!head.ok)throw Error(label+": неможливо перевірити наявний файл (HTTP "+head.status+").");
+    total=Number(head.headers.get("content-length"))||0;
+    const ct=(head.headers.get("content-type")||"").toLowerCase();
+    if(!ct.startsWith("video/") && !ct.includes("octet-stream"))
+      throw Error(label+": сервер не підтвердив тип відеофайлу.");
+    if(!total || total<MIN_MEDIA_BYTES)
+      throw Error(label+": сервер не надав повний розмір для безпечного відновлення.");
+    if(start===total)return {bytes:total,skipped:true,resumed:false};
+    if(start>total)throw Error(label+": локальний файл більший за серверний; не перезаписую.");
+  }
+  const headers=start>0?{"Range":"bytes="+start+"-"}:{};
+  const res=await fetch(url,{mode:"cors",headers,signal:controller.signal,redirect:"follow"});
   if(!res.ok)throw Error(label+": сервер відповів HTTP "+res.status+".");
   const mime=(res.headers.get("content-type")||"").toLowerCase();
   if(!mime.startsWith("video/") && !mime.includes("octet-stream"))
     throw Error(label+": сервер повернув "+(mime||"невідомий тип")+" замість відеофайлу.");
   const length=Number(res.headers.get("content-length"))||0;
-  if(res.status===206) {
+  if(res.status===206){
     const partial=res.headers.get("content-range")||"";
     const match=partial.match(/^bytes (\d+)-(\d+)\/(\d+)$/i);
-    if(!match || Number(match[1])!==0 ||
-        Number(match[2])+1!==Number(match[3])) {
-      throw Error(label+": сервер віддав лише частину відео (HTTP 206), повний файл не підтверджено.");
+    if(!match || Number(match[1])!==start ||
+       Number(match[2])+1!==Number(match[3])) {
+      throw Error(label+": сервер віддав неповну або невідповідну частину відео.");
     }
+    const full=Number(match[3]);
+    if(total && full!==total)throw Error(label+": розмір файлу змінився після попереднього завантаження.");
+    total=full;
+  }else if(start>0){
+    throw Error(label+": сервер не підтримує відновлення Range. Наявний файл збережено.");
   }
-  if(length>0 && length<MIN_MEDIA_BYTES)
-    throw Error(label+": відповідь занадто мала для повної серії ("+prettyBytes(length)+").");
+  if(!total && length>0)total=length;
+  if(total>0 && total<MIN_MEDIA_BYTES)
+    throw Error(label+": файл занадто малий ("+prettyBytes(total)+").");
   if(!res.body)throw Error(label+": браузер не підтримує потокове збереження з цього джерела.");
-  const file=await fileHandle.createWritable();
+  const file=await fileHandle.createWritable({keepExistingData:start>0});
+  if(start>0)await file.seek(start);
   const reader=res.body.getReader();
   let written=0;
-  try {
-    while(true) {
+  try{
+    while(true){
+      if(controller.signal.aborted)throw new DOMException("Скасовано","AbortError");
       const {done,value}=await reader.read();
       if(done)break;
-      if(controller.signal.aborted)throw new DOMException("Скасовано","AbortError");
       await file.write(value);
       written+=value.byteLength;
-      if(typeof onProgress==="function")onProgress(written,length);
+      if(typeof onProgress==="function")onProgress(start+written,total);
     }
-    if(length>0 && written!==length)throw Error(label+": завантажено "+written+" байтів замість "+length+".");
-    if(written<MIN_MEDIA_BYTES)throw Error(label+": замало відеоданих ("+prettyBytes(written)+").");
+    if(length>0 && written!==length)
+      throw Error(label+": завантажено "+written+" байтів замість "+length+".");
+    if(total>0 && start+written!==total)
+      throw Error(label+": підсумковий розмір не збігається з серверним.");
+    if(start+written<MIN_MEDIA_BYTES)
+      throw Error(label+": недостатньо даних для повної серії.");
     await file.close();
-    return written;
-  }catch(error) {
+    const saved=await fileHandle.getFile();
+    if(total>0 && saved.size!==total)
+      throw Error(label+": записаний файл має неправильний розмір.");
+    return {bytes:saved.size,skipped:false,resumed:start>0};
+  }catch(error){
     try{await reader.cancel();}catch(_){}
-    try{await file.abort();}catch(_){}
+    // При скасуванні залишаємо вже записані байти для відновлення через HTTP Range.
+    try{
+      if(error.name==="AbortError" && written>0)await file.close();
+      else await file.abort();
+    }catch(_){}
     throw error;
   }
 }
@@ -107,11 +142,12 @@ async function downloadOne() {
       description:"Відео",accept:{"video/mp4":[".mp4"],"video/webm":[".webm"]}}]});
     buttons(true);
     controller=new AbortController();
-    const bytes=await writeRemoteToFile(url,handle,suggested,(written,total)=>{
+    const result=await writeRemoteToFile(url,handle,suggested,(written,total)=>{
       status("Завантаження: "+suggested+" — "+prettyBytes(written)+
         (total?" із "+prettyBytes(total)+" ("+Math.round(written/total*100)+"%)":""));
     });
-    status("Збережено "+suggested+" · "+prettyBytes(bytes));
+    status((result.skipped?"Файл уже збережено: ":"Збережено: ")+suggested+
+      " · "+prettyBytes(result.bytes)+(result.resumed?" (відновлено)":""));
   }catch(error) {
     if(error.name!=="AbortError")status(error.message || "Не вдалося завантажити відео.",true);
     else status("Завантаження скасовано.");
@@ -142,13 +178,12 @@ async function downloadAll() {
         "E"+String(index+1).padStart(2,"0")+extension(url);
       try{
         const handle=await seasonDir.getFileHandle(name,{create:true});
-        const present=await handle.getFile();
-        if(present.size>0) { existing++; continue; }
-        await writeRemoteToFile(url,handle,name,(written,total)=>{
+        const result=await writeRemoteToFile(url,handle,name,(written,total)=>{
           status("Серія "+(index+1)+"/"+c.season.episodeUrls.length+": "+prettyBytes(written)+
             (total?" із "+prettyBytes(total):"")+". Збережено: "+done);
         });
-        done++;
+        if(result.skipped)existing++;
+        else done++;
       }catch(error) {
         if(error.name==="AbortError")throw error;
         failed++;
