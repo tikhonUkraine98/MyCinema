@@ -156,7 +156,8 @@
       <div class="brand"><span class="brand-mark" aria-hidden="true">▶</span> Мій відеоплеєр</div>
       <div class="nav-actions">
         <button class="action" id="openLibrary" type="button">Бібліотека</button>
-        <button class="action" id="openSearch" type="button">⌕ Пошук серіалів</button>
+        <button class="action" id="openCatalogExplore" type="button">Каталог серіалів</button>
+        <button class="action" id="openSearch" type="button">⌕ Пошук за назвою</button>
         <button class="action" id="openSettings" type="button">⚙ Налаштування</button>
         <button class="action primary" id="addSeries" type="button">+ Додати серіал</button>
         <button class="action" id="exportData" type="button" title="Зберегти бібліотеку і прогрес у JSON">Експорт</button>
@@ -189,6 +190,52 @@
       <p class="foot">Для нових серіалів використовуй прямі MP4/WebM-посилання, до яких маєш право доступу. Експорт створює резервну копію адрес і прогресу перегляду.</p>
     </section>
 
+
+    <section id="catalogExploreScreen" hidden>
+      <div class="library-head">
+        <div>
+          <p class="eyebrow">Каталог із підтвердженими платформами</p>
+          <h1>Що подивитися</h1>
+          <p class="subtitle">Переглядай серіали без попереднього списку назв. Для кожного результату перевіряємо наявність офіційної платформи в обраній країні.</p>
+        </div>
+      </div>
+      <form id="exploreFilters" class="catalog-explore-filters">
+        <label>Тип доступу
+          <select id="exploreType">
+            <option value="all">Усі доступні серіали</option>
+            <option value="free">Безкоштовно / з рекламою</option>
+            <option value="flatrate">Підписка</option>
+            <option value="rent">Оренда</option>
+            <option value="buy">Купівля</option>
+          </select>
+        </label>
+        <label>Сортування
+          <select id="exploreSort">
+            <option value="popularity.desc">Популярні</option>
+            <option value="vote_average.desc">Найвища оцінка</option>
+            <option value="first_air_date.desc">Нові серіали</option>
+          </select>
+        </label>
+        <label>Жанр
+          <select id="exploreGenre"><option value="">Усі жанри</option></select>
+        </label>
+        <label>Мінімальна оцінка
+          <select id="exploreRating">
+            <option value="">Будь-яка</option>
+            <option value="6">6+</option>
+            <option value="7">7+</option>
+            <option value="8">8+</option>
+          </select>
+        </label>
+        <button class="action primary" id="exploreApply" type="submit">Оновити каталог</button>
+        <button class="action" id="exploreSettings" type="button">Країна / API</button>
+      </form>
+      <p id="exploreProgress" class="micro" role="status" aria-live="polite">Джерела ще не перевірялися.</p>
+      <div id="exploreResults" class="discovery-grid"></div>
+      <p class="empty" id="exploreEmpty" hidden>Наразі немає результатів для цих фільтрів.</p>
+      <button id="exploreMore" class="action primary" type="button" hidden>Завантажити ще серіали</button>
+      <p class="foot">Позначка «Доступно на платформі» не означає, що в нас є MP4 або право на його завантаження. Інформація про платформи: JustWatch через TMDB; доступність може змінюватися.</p>
+    </section>
 
     <section id="searchScreen" hidden>
       <div class="library-head">
@@ -746,5 +793,6 @@ if (state.current) {
   <link rel="stylesheet" href="./discovery.css">
   <script src="./availability.js"></script>
   <script src="./discovery.js"></script>
+  <script src="./catalog.js"></script>
 </body>
 </html>
