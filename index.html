@@ -711,6 +711,7 @@ form.addEventListener("submit",event=> {
       show = state.series.find(s=>s.id===editTarget.seriesId);
       const season = show.seasons.find(s=>s.number===editTarget.season);
       season.quality = quality;
+      if (season.episodeUrls.join("\n") !== episodeUrls.join("\n")) season.rights = null;
       season.episodeUrls = episodeUrls;
     } else {
       show = state.series.find(s=>s.title.toLocaleLowerCase("uk")==name.toLocaleLowerCase("uk"));
