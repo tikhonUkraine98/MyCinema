@@ -154,6 +154,7 @@ async function downloadAll() {
     else status("Завантаження скасовано.");
   }finally {controller=null;buttons(false);}
 }
+window.MyCinemaDownloader={downloadOne,downloadAll};
 byId("downloadEpisode").addEventListener("click",downloadOne);
 byId("downloadSeason").addEventListener("click",downloadAll);
 byId("cancelDownload").addEventListener("click",()=>controller?.abort());
