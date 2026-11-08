@@ -113,6 +113,13 @@ function renderCard(row, providers) {
     play.type="button";
     play.addEventListener("click",()=>openLocalSeries(local));
     buttons.append(play);
+    const download=node("button","action","Завантажити");
+    download.type="button";
+    download.addEventListener("click",()=>{
+      openLocalSeries(local);
+      window.MyCinemaDownloader?.downloadOne();
+    });
+    buttons.append(download);
   } else {
     const official=node("button","action","Де дивитися");
     official.type="button";
