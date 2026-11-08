@@ -102,9 +102,13 @@ const fakeFetch=async (input,options={})=>{
     }),body:mockStream()};
   throw Error("Unexpected network request in smoke test: "+url);
 };
+class TestURL extends URL {
+  static createObjectURL(){return "blob:mycinema-test";}
+  static revokeObjectURL(){}
+}
 const sandbox=vm.createContext({
   document,window,localStorage,
-  console,URL,URLSearchParams,AbortController,DOMException,
+  console,URL:TestURL,URLSearchParams,AbortController,DOMException,
   HTMLMediaElement:{HAVE_CURRENT_DATA:2},
   setTimeout,clearTimeout,
   confirm(){return true;},alert(message){throw Error("Unexpected alert: "+message);},
@@ -112,13 +116,14 @@ const sandbox=vm.createContext({
   Blob,Headers,fetch:fakeFetch
 });
 vm.runInContext(inline,sandbox,{filename:"index-inline.js"});
-for(const path of ["availability.js","discovery.js","catalog.js","downloader.js","sources.js"])
+for(const path of ["availability.js","discovery.js","catalog.js","downloader.js","sources.js","offline.js"])
   vm.runInContext(load(path),sandbox,{filename:path});
 assert.ok(window.MyCinemaAvailability);
 assert.ok(window.MyCinemaDiscovery);
 assert.ok(window.MyCinemaCatalog);
 assert.ok(window.MyCinemaDownloader);
 assert.ok(window.MyCinemaSources);
+assert.ok(window.MyCinemaOffline);
 elements.get("openCatalogExplore").click();
 assert.equal(elements.get("catalogExploreScreen").hidden,false);
 assert.match(elements.get("exploreProgress").textContent,/TMDB/);
@@ -170,4 +175,14 @@ assert.match(elements.get("downloadProgress").textContent,/Збережено/);
 await window.MyCinemaDownloader.downloadOne();
 assert.equal(savedSize,FAKE_BYTES);
 assert.match(elements.get("downloadProgress").textContent,/(?:вже|уже) збережено/);
-console.log("Browser smoke passed: modules, Archive API, license verification, import, download and duplicate file checks.");
+window.MyCinemaOffline.openFiles([
+  {name:"episode02.mp4",size:FAKE_BYTES,lastModified:123},
+  {name:"episode01.mp4",size:FAKE_BYTES,lastModified:122}
+]);
+assert.equal(window.MyCinemaOffline.isActive(),true);
+assert.equal(elements.get("episodeTitle").textContent,"episode01.mp4");
+window.MyCinemaOffline.next();
+assert.equal(elements.get("episodeTitle").textContent,"episode02.mp4");
+window.MyCinemaOffline.stop();
+assert.equal(window.MyCinemaOffline.isActive(),false);
+console.log("Browser smoke passed: Archive integration, licensing, offline queue, validated download and duplicate file checks.");
