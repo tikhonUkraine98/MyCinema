@@ -163,21 +163,44 @@ async function browseOpenEpisodes(page=1,onProgress=()=>{}) {
   return {items:accepted,page:pageNo,hasMore:docs.length>0,stats};
 }
 async function checkFile(url) {
-  // Direct CORS HEAD request; do not infer file availability from the title alone.
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),13000);
-  try{
-    const response=await fetch(url,{method:"HEAD",redirect:"follow",mode:"cors",
-      credentials:"omit",signal:controller.signal});
-    const contentType=(response.headers.get("content-type")||"").toLowerCase();
-    const len=Number(response.headers.get("content-length")||0);
-    if(!response.ok)return {ok:false,reason:"HTTP "+response.status};
-    if(!/^video\/|octet-stream|application\/mp4/.test(contentType))
-      return {ok:false,reason:"Не відеофайл ("+contentType+")"};
-    if(len>0&&len<MIN_BYTES)return {ok:false,reason:"Файл замалий"};
-    return {ok:true,size:len||null,contentType};
-  }catch(e){return {ok:false,reason:"Не вдалося підтвердити доступ браузером (можливий CORS/мережа)."};}
-  finally{clearTimeout(timer);}
+  // A server may reject HEAD or omit CORS on it while still allowing ranged
+  // GET requests. Confirm byte access using a tiny GET fallback.
+  const ctl=new AbortController();
+  const timer=setTimeout(()=>ctl.abort(),13000);
+  const typeOK=type=>/^(video\/|application\/octet-stream|binary\/octet-stream|application\/mp4)/.test(type);
+  try {
+    let response=null;
+    try {
+      response=await fetch(url,{method:"HEAD",redirect:"follow",mode:"cors",
+        credentials:"omit",signal:ctl.signal});
+    } catch (_) { /* retry below with ranged GET */ }
+    if(response?.ok) {
+      const mime=(response.headers.get("content-type")||"").toLowerCase();
+      const size=Number(response.headers.get("content-length"))||0;
+      if(typeOK(mime) && size>=MIN_BYTES)
+        return {ok:true,size,contentType:mime,method:"HEAD"};
+    }
+    // GET fallback is also used when the HEAD response is ambiguous.
+    const ranged=await fetch(url,{method:"GET",headers:{"Range":"bytes=0-1023"},
+      redirect:"follow",mode:"cors",credentials:"omit",signal:ctl.signal});
+    if(!ranged.ok)return {ok:false,reason:"HTTP "+ranged.status};
+    const mime=(ranged.headers.get("content-type")||"").toLowerCase();
+    if(!typeOK(mime))return {ok:false,reason:"Сервер не повернув відео ("+(mime||"невідомий тип")+")"};
+    let size=0;
+    if(ranged.status===206){
+      const cr=ranged.headers.get("content-range")||"";
+      const m=cr.match(/^bytes \d+-\d+\/(\d+)$/i);
+      if(m)size=Number(m[1]);
+    } else size=Number(ranged.headers.get("content-length"))||0;
+    if(size>0 && size<MIN_BYTES)return {ok:false,reason:"Файл занадто малий"};
+    // Cancel immediately: do not pull the entire file into the browser.
+    try{await ranged.body?.cancel();}catch(_){}
+    if(size===0)return {ok:false,reason:"Сервер не повідомив повного розміру файлу"};
+    return {ok:true,size,contentType:mime,method:"Range GET"};
+  }catch(error){
+    return {ok:false,reason:error.name==="AbortError"?"Перевищено час перевірки":
+      "Браузер не може прочитати файл (мережа або CORS)"};
+  }finally{clearTimeout(timer);}
 }
 function make(tag,klass,text) {
   const n=document.createElement(tag);
