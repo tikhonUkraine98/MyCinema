@@ -58,33 +58,54 @@ function summary(show) {
 function probe(url) {
   return new Promise((resolve) => {
     let done = false;
+    let stage = 0;
+    let duration = 0;
     const video = document.createElement("video");
     video.preload = "metadata";
     video.muted = true;
     video.playsInline = true;
     let timer;
-    const finish = (status, duration=0) => {
+    const finish = (status, seconds=0) => {
       if (done) return;
       done = true;
       clearTimeout(timer);
       video.onloadedmetadata = null;
+      video.onseeked = null;
+      video.onloadeddata = null;
+      video.oncanplay = null;
       video.onerror = null;
       try { video.pause(); video.removeAttribute("src"); video.load(); } catch (_) {}
-      resolve({status, duration, checkedAt:Date.now()});
+      resolve({status, duration:seconds, checkedAt:Date.now()});
+    };
+    const confirmFrame = () => {
+      if (stage === 1 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+        video.currentTime > 0) finish("available", duration);
     };
     video.onloadedmetadata = () => {
-      const duration = video.duration;
+      duration = video.duration;
       if (!Number.isFinite(duration) || duration <= 0) return finish("unknown");
-      finish(duration >= MIN_EPISODE_SECONDS ? "available" : "preview", duration);
+      if (duration < MIN_EPISODE_SECONDS) return finish("preview", duration);
+      // Перевіряємо, чи сервер віддає відеокадри не лише на початку MP4.
+      // Це не гарантує, що весь файл можна завантажити.
+      stage = 1;
+      try {
+        video.preload = "auto";
+        video.currentTime = Math.max(1, Math.min(duration - 10, duration * 0.55));
+      } catch (_) { finish("unknown", duration); }
     };
+    video.onseeked = confirmFrame;
+    video.onloadeddata = confirmFrame;
+    video.oncanplay = confirmFrame;
     video.onerror = () => finish("error");
-    timer = setTimeout(() => finish("unknown"), TIMEOUT_MS);
+    timer = setTimeout(() => finish("unknown", duration), TIMEOUT_MS);
     try { video.src = url; video.load(); } catch (_) { finish("error"); }
   });
 }
 async function scan(series, onUpdate, onProgress, all=false) {
   if (scanning) return;
   scanning = true;
+  const controls = ["verifySources","verifyAll"].map(id => document.getElementById(id)).filter(Boolean);
+  controls.forEach(button => button.disabled = true);
   const urls = [];
   const distinct = new Set();
   for (const show of series || []) {
@@ -104,7 +125,7 @@ async function scan(series, onUpdate, onProgress, all=false) {
     if (typeof onProgress === "function") {
       onProgress(urls.length ? "Перевірено " + completed + " із " + urls.length +
         " нових відеоджерел. Перевірка підтверджує лише відтворення." :
-        "Перевірка актуальна. За потреби скористайся кнопкою «Перевірити всі серії».");
+        "Поточні перевірки завершено. За потреби скористайся кнопкою «Перевірити всі серії».");
     }
   };
   report();
@@ -119,7 +140,10 @@ async function scan(series, onUpdate, onProgress, all=false) {
     }
   };
   try { await Promise.all([worker(), worker()]); }
-  finally { scanning = false; }
+  finally {
+    scanning = false;
+    controls.forEach(button => button.disabled = false);
+  }
 }
 function reset() {
   cache = {};
@@ -139,11 +163,6 @@ function initialize() {
   first.addEventListener("click", () => {reset(); redraw(); run(false);});
   all.addEventListener("click", () => {reset(); redraw(); run(true);});
   // Automatically check the first episode of each saved season when opening.
-  const originalShowLibrary = showLibrary;
-  window.showLibrary = function () {
-    originalShowLibrary();
-    run(false);
-  };
   if (!document.getElementById("libraryScreen").hidden) run(false);
 }
 initialize();
