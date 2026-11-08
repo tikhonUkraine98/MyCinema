@@ -52,6 +52,14 @@ async function writeRemoteToFile(url,fileHandle,label,onProgress) {
   if(!mime.startsWith("video/") && !mime.includes("octet-stream"))
     throw Error(label+": сервер повернув "+(mime||"невідомий тип")+" замість відеофайлу.");
   const length=Number(res.headers.get("content-length"))||0;
+  if(res.status===206) {
+    const partial=res.headers.get("content-range")||"";
+    const match=partial.match(/^bytes (\d+)-(\d+)\/(\d+)$/i);
+    if(!match || Number(match[1])!==0 ||
+        Number(match[2])+1!==Number(match[3])) {
+      throw Error(label+": сервер віддав лише частину відео (HTTP 206), повний файл не підтверджено.");
+    }
+  }
   if(length>0 && length<MIN_MEDIA_BYTES)
     throw Error(label+": відповідь занадто мала для повної серії ("+prettyBytes(length)+").");
   if(!res.body)throw Error(label+": браузер не підтримує потокове збереження з цього джерела.");
