@@ -326,6 +326,16 @@ function addToLibrary(item,files) {
       title,seasons:[]};
     state.series.push(show);
   }
+  const duplicate=show.seasons.find(season=>
+    season.episodeUrls.some(url=>urls.includes(url)));
+  if(duplicate) {
+    if(typeof loadEpisode==="function" && typeof showWatch==="function") {
+      loadEpisode(show.id,duplicate.number,1,false);
+      showWatch();
+    }
+    return {title,seriesId:show.id,season:duplicate.number,
+      count:duplicate.episodeUrls.length,existing:true};
+  }
   let seasonNo=1;
   while(show.seasons.some(x=>x.number===seasonNo))seasonNo++;
   if(seasonNo>30)throw Error("У серіалі вже 30 сезонів.");
