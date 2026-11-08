@@ -197,10 +197,16 @@
         <div>
           <p class="eyebrow">Каталог із підтвердженими платформами</p>
           <h1>Що подивитися</h1>
-          <p class="subtitle">Переглядай серіали без попереднього списку назв. Для кожного результату перевіряємо наявність офіційної платформи в обраній країні.</p>
+          <p class="subtitle">За замовчуванням показуємо лише старі серіали, для яких знайдено файли з відкритою ліцензією та пройшла перевірка відео. Окремо можна переглядати каталог стримінгових платформ.</p>
         </div>
       </div>
       <form id="exploreFilters" class="catalog-explore-filters">
+        <label>Що показувати
+          <select id="exploreMode">
+            <option value="downloads">Перевірені відкриті відеофайли</option>
+            <option value="platforms">Доступні на стримінгових платформах</option>
+          </select>
+        </label>
         <label>Тип доступу
           <select id="exploreType">
             <option value="all">Усі доступні серіали</option>
@@ -235,7 +241,7 @@
       <div id="exploreResults" class="discovery-grid"></div>
       <p class="empty" id="exploreEmpty" hidden>Наразі немає результатів для цих фільтрів.</p>
       <button id="exploreMore" class="action primary" type="button" hidden>Завантажити ще серіали</button>
-      <p class="foot">Позначка «Доступно на платформі» не означає, що в нас є MP4 або право на його завантаження. Інформація про платформи: JustWatch через TMDB; доступність може змінюватися.</p>
+      <p class="foot">Режим відкритих файлів: автоматична перевірка Internet Archive, заявленої ліцензії, MP4/WebM та фрагмента відео (старі серіали до 1980 року). Наявність відкритої ліцензії в метаданих не є юридичною гарантією. Режим платформ: JustWatch через TMDB; це не MP4 і не завантаження.</p>
     </section>
 
     <section id="searchScreen" hidden>
