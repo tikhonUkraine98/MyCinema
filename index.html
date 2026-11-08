@@ -291,6 +291,8 @@
             <button class="action primary" type="button" id="next">Наступна →</button>
             <button class="action" type="button" id="downloadEpisode">Завантажити серію</button>
             <button class="action" type="button" id="downloadSeason">Завантажити сезон</button>
+            <button class="action" type="button" id="openOfflineFiles">Відкрити файли з диска</button>
+            <input id="offlineFiles" type="file" multiple accept=".mp4,.webm,video/mp4,video/webm" hidden>
             <button class="action" type="button" id="cancelDownload" hidden>Скасувати завантаження</button>
             <label class="autonext"><input id="autoNext" type="checkbox" checked> Наступна серія автоматично</label>
           </div>
@@ -555,6 +557,7 @@ function renderEpisodes() {
   }
 }
 function saveProgress() {
+  if (window.MyCinemaOffline?.isActive()) return;
   if (!loadedKey || !Number.isFinite(player.duration) || player.duration <= 0) return;
   state.progress[loadedKey] = {
     time:Number.isFinite(player.currentTime)?player.currentTime:0,
@@ -563,6 +566,7 @@ function saveProgress() {
   persist();
 }
 function loadEpisode(seriesId,seasonNumber,episodeNumber,autoplay=false) {
+  if (window.MyCinemaOffline?.isActive()) window.MyCinemaOffline.stop();
   const show = state.series.find(s=>s.id===seriesId);
   const season = show?.seasons.find(s=>s.number===seasonNumber);
   if (!season || episodeNumber<1 || episodeNumber>season.episodeUrls.length) return;
@@ -598,6 +602,7 @@ function loadEpisode(seriesId,seasonNumber,episodeNumber,autoplay=false) {
   document.title = `${show.title} — Мій відеоплеєр`;
 }
 player.addEventListener("loadedmetadata",()=> {
+  if (window.MyCinemaOffline?.isActive()) return;
   if (!pendingResume || pendingResume.key!==loadedKey) return;
   const {time,autoplay} = pendingResume;
   pendingResume = null;
@@ -612,9 +617,20 @@ player.addEventListener("timeupdate",()=> {
     saveProgress();
   }
 });
-player.addEventListener("pause",()=>{saveProgress();renderEpisodes();});
-player.addEventListener("error",()=>setStatus("Не вдалося відкрити файл. Перевір адресу або доступ до джерела у Network.",true));
+player.addEventListener("pause",()=>{
+  if(window.MyCinemaOffline?.isActive())return;
+  saveProgress();renderEpisodes();
+});
+player.addEventListener("error",()=>{
+  if(window.MyCinemaOffline?.isActive())
+    setStatus("Не вдалося відкрити локальний відеофайл.",true);
+  else setStatus("Не вдалося відкрити файл. Перевір адресу або доступ до джерела у Network.",true);
+});
 player.addEventListener("ended",()=> {
+  if(window.MyCinemaOffline?.isActive()) {
+    window.MyCinemaOffline.ended();
+    return;
+  }
   if (loadedKey && Number.isFinite(player.duration)) {
     state.progress[loadedKey] = {time:player.duration,duration:player.duration};
     persist();
@@ -624,8 +640,14 @@ player.addEventListener("ended",()=> {
   if (state.autoNext && c.episode < currentSeason().episodeUrls.length) loadEpisode(c.seriesId,c.season,c.episode+1,true);
 });
 window.addEventListener("pagehide",saveProgress);
-$("previous").addEventListener("click",()=>loadEpisode(state.current.seriesId,state.current.season,state.current.episode-1,true));
-$("next").addEventListener("click",()=>loadEpisode(state.current.seriesId,state.current.season,state.current.episode+1,true));
+$("previous").addEventListener("click",()=>{
+  if(window.MyCinemaOffline?.isActive())window.MyCinemaOffline.previous();
+  else if(state.current)loadEpisode(state.current.seriesId,state.current.season,state.current.episode-1,true);
+});
+$("next").addEventListener("click",()=>{
+  if(window.MyCinemaOffline?.isActive())window.MyCinemaOffline.next();
+  else if(state.current)loadEpisode(state.current.seriesId,state.current.season,state.current.episode+1,true);
+});
 $("autoNext").checked = state.autoNext;
 $("autoNext").addEventListener("change",()=>{state.autoNext=$("autoNext").checked;persist();});
 $("openLibrary").addEventListener("click",showLibrary);
@@ -849,5 +871,6 @@ if (state.current) {
   <script src="./catalog.js"></script>
   <script src="./downloader.js"></script>
   <script src="./sources.js"></script>
+  <script src="./offline.js"></script>
 </body>
 </html>
