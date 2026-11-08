@@ -27,3 +27,7 @@ Performance optimizations: no more than three candidate-provider lookups in para
 ## Regression note
 
 The verified download check must recognize both Ukrainian wordings «вже збережено» and «уже збережено», because the player uses the latter. Automated tests should accept either wording while still checking the actual byte count.
+
+## Offline regression check
+
+Select several downloaded local MP4 files through «Відкрити файли з диска», confirm natural episode sorting, manual next/previous, automatic next and progress recovery after reselecting the same files. Verify that returning to a remote library episode revokes the temporary local object URL.
