@@ -184,18 +184,29 @@ function render(results) {
     });
     add.addEventListener("click",()=>{
       if(!passing.length)return;
-      if(typeof openEditor!=="function")return;
+      try {
+        const added=addToLibrary(item,passing.slice(0,1));
+        DOM("sourceDialog").close();
+        setStatus("Додано "+added.title+".");
+      }catch(error){setStatus(error.message||"Не вдалося додати відео.",true);}
+    });
+    actions.append(check,add);
+    const whole=make("button","action","Заповнити форму всіма файлами");
+    whole.type="button";
+    whole.addEventListener("click",()=>{
+      if(!passing.length||typeof openEditor!=="function")return;
       openEditor();
       DOM("seriesName").value=item.title.slice(0,120);
       DOM("seasonNumber").value="1";
       DOM("episodeTotal").value=String(Math.min(60,passing.length));
-      DOM("qualityInput").value="Відкрите відео";
+      DOM("qualityInput").value="Archive MP4/WebM";
       DOM("sourceMode").value="manual";
       DOM("sourceMode").dispatchEvent(new Event("change"));
-      DOM("urlInput").value=passing.slice(0,60).map(file=>file.url).join("\n");
-      DOM("urlHint").textContent="Файли Internet Archive. Переконайся, що їх порядок відповідає серіям. Дотримуйся умов ліцензії: "+item.license.name+".";
+      DOM("urlInput").value=passing.slice(0,60).map(f=>f.url).join("\n");
+      DOM("urlHint").textContent="Перевір відповідність файлів номерам серій. Ліцензія: "+
+        item.license.name+". Посилання: "+item.itemUrl;
     });
-    actions.append(check,add);
+    actions.append(whole);
     card.append(actions);
     const files=make("p","source-file-names",item.files.slice(0,4).map(f=>f.name).join(" · ")+
       (item.files.length>4?" · …":""));
