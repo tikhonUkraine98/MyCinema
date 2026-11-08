@@ -3,7 +3,7 @@
 const byId = id => document.getElementById(id);
 const DISC = window.MyCinemaDiscovery;
 const PAGE_SIZE = 20;
-const PROVIDER_CONCURRENCY = 4;
+const PROVIDER_CONCURRENCY = 3;
 let genresLoaded = false;
 const MAX_PROVIDER_CACHE = 300;
 const CACHE_TTL_MS = 30 * 60 * 1000;
@@ -89,7 +89,7 @@ function listProviderNames(providers) {
   const rest=providers.length-names.length;
   return names.join(", ")+(rest>0?" та ще "+rest:"");
 }
-function renderCard(row, providers) {
+function renderCard(row, providers, archiveMatch=null) {
   const card=node("article","discovery-item catalog-result");
   card.append(poster(row));
   card.append(node("strong","discovery-name",row.name || row.original_name || "Без назви"));
@@ -99,7 +99,9 @@ function renderCard(row, providers) {
   card.append(node("span","discovery-year",(year || "Рік невідомий")+rating));
   const local=getLocalSeries(row);
   if(local) card.append(node("span","catalog-verified","Власний перевірений потік"));
-  card.append(node("span","catalog-provider",listProviderNames(providers)));
+  card.append(node("span","catalog-provider",archiveMatch ?
+    "Знайдено ліцензований файл: "+archiveMatch.item.license.name :
+    listProviderNames(providers)));
   const buttons=node("div","catalog-result-actions");
   const details=node("button","action","Деталі");
   details.type="button";
@@ -108,6 +110,23 @@ function renderCard(row, providers) {
     DISC.showDetails(row);
   });
   buttons.append(details);
+  const probeSources=node("button","action","Шукати відкриті відео");
+  probeSources.type="button";
+  probeSources.addEventListener("click",()=>{
+    window.MyCinemaSources?.openWithTitle(row.original_name||row.name||"");
+  });
+  buttons.append(probeSources);
+  if(archiveMatch) {
+    const importBtn=node("button","action primary","Додати відео");
+    importBtn.type="button";
+    importBtn.addEventListener("click",()=>{
+      try{
+        const added=window.MyCinemaSources.addToLibrary(archiveMatch.item,[archiveMatch.file]);
+        message("Додано: "+added.title+" · "+added.count+" відеофайл(ів).");
+      }catch(e){message(e.message||"Помилка імпорту відео.",true);}
+    });
+    buttons.append(importBtn);
+  }
   if(local) {
     const play=node("button","action primary","Моє відео");
     play.type="button";
@@ -146,31 +165,55 @@ async function checkProviders(row, region, type) {
   const matches=allProviders(data,CATEGORY_TYPES[type] || CATEGORY_TYPES.all);
   return matches;
 }
-async function verifyPage(rows, region, type, session) {
-  let index=0;
-  let checked=0;
-  let successful=0;
-  let failures=0;
+async function checkOpenArchive(row) {
+  const adapter=window.MyCinemaSources;
+  if(!adapter)return null;
+  const name=(row.original_name||row.name||"").trim();
+  if(name.length<4)return null;
+  const matches=await adapter.find(name);
+  for(const item of matches.slice(0,3)) {
+    // At most one verified episode candidate per item; auto-scan is intentionally bounded.
+    for(const file of item.files.slice(0,2)) {
+      const head=await adapter.checkFile(file.url);
+      if(!head.ok)continue;
+      const checker=window.MyCinemaAvailability;
+      if(!checker)return null;
+      await checker.scan([{seasons:[{episodeUrls:[file.url]}]}],()=>{},()=>{},true);
+      const validated=checker.cached(file.url);
+      // Reject trailers and short fragments; only probable full episodes.
+      if(validated?.status==="available" && validated.duration>=900) {
+        return {item,file};
+      }
+    }
+  }
+  return null;
+}
+async function verifyPage(rows, region, type, session, mode) {
+  let index=0,checked=0,successful=0,failures=0;
   const accepted=new Array(rows.length).fill(null);
-  const worker=async ()=>{
+  async function worker() {
     while(index<rows.length && session===stateCatalog.session) {
       const position=index++;
       const row=rows[position];
       try {
-        const providers=await checkProviders(row,region,type);
-        if(providers.length) {accepted[position]={row,providers};successful++;}
-      } catch (_) {failures++;}
+        if(mode==="downloads") {
+          const match=await checkOpenArchive(row);
+          if(match) {accepted[position]={row,providers:[],archiveMatch:match};successful++;}
+        } else {
+          const providers=await checkProviders(row,region,type);
+          if(providers.length) {accepted[position]={row,providers};successful++;}
+        }
+      }catch(_){failures++;}
       checked++;
       if(session!==stateCatalog.session)return;
-      message("Перевірено платформ для "+checked+" із "+rows.length+
-        " серіалів на сторінці · підтверджено "+successful+
-        (failures?" · з помилками "+failures:"")+".");
+      message("Перевірено "+checked+" із "+rows.length+" серіалів · "+
+        "знайдено "+successful+(failures?" · помилки запитів: "+failures:""));
     }
-  };
+  }
   await Promise.all(Array.from({length:Math.min(PROVIDER_CONCURRENCY,rows.length)},()=>worker()));
-  if (session!==stateCatalog.session) return {aborted:true};
-  for(const item of accepted) if(item) {
-    byId("exploreResults").append(renderCard(item.row,item.providers));
+  if(session!==stateCatalog.session)return {aborted:true};
+  for(const item of accepted)if(item) {
+    byId("exploreResults").append(renderCard(item.row,item.providers,item.archiveMatch));
     stateCatalog.shown++;
   }
   return {successful,failures,checked};
@@ -181,15 +224,21 @@ async function loadNext() {
   const next=stateCatalog.page+1;
   const region=stateCatalog.region;
   const type=stateCatalog.type;
+  const mode=byId("exploreMode").value;
   setLoading(true);
   message("Завантажую сторінку "+next+" із каталогу TMDB...");
   const query={
     page:next,
     include_adult:false,
     sort_by:byId("exploreSort").value,
-    watch_region:region,
-    with_watch_monetization_types:CATEGORY_TYPES[type].join("|")
   };
+  if(mode==="platforms"){
+    query.watch_region=region;
+    query.with_watch_monetization_types=CATEGORY_TYPES[type].join("|");
+  } else {
+    // Open-license archive uploads are usually old television works.
+    query["first_air_date.lte"]="1979-12-31";
+  }
   const genre=byId("exploreGenre").value;
   if(genre)query.with_genres=genre;
   const rating=byId("exploreRating").value;
@@ -202,13 +251,14 @@ async function loadNext() {
     stateCatalog.pages=total;
     stateCatalog.page=next;
     stateCatalog.searched+=rows.length;
-    if(rows.length)await verifyPage(rows,region,type,session);
+    if(rows.length)await verifyPage(rows,region,type,session,mode);
     if(session!==stateCatalog.session)return;
     const remaining=stateCatalog.page<stateCatalog.pages;
     byId("exploreMore").hidden=!remaining;
     message("Переглянуто "+stateCatalog.searched+" кандидатів · "+
-      "підтверджено платформу для "+stateCatalog.shown+
-      " серіалів у "+region+". "+
+      (mode==="downloads"?"файли з відкритою ліцензією та перевіреним відеопотоком: ":
+       "підтверджено платформу у "+region+": ")+stateCatalog.shown+
+      " серіалів. "+
       (remaining?"Можна завантажити наступну сторінку.":"Кінець результатів."));
     if(!stateCatalog.shown) {
       byId("exploreEmpty").hidden=false;
@@ -228,6 +278,7 @@ function reload() {
   stateCatalog.searched=0;
   stateCatalog.region=DISC.region();
   stateCatalog.type=byId("exploreType").value;
+  byId("exploreType").disabled=byId("exploreMode").value==="downloads";
   byId("exploreResults").replaceChildren();
   byId("exploreEmpty").hidden=true;
   byId("exploreMore").hidden=true;
@@ -260,6 +311,7 @@ byId("exploreMore").addEventListener("click",loadNext);
 byId("exploreFilters").addEventListener("submit",event=>{event.preventDefault();reload();});
 byId("exploreSettings").addEventListener("click",()=>byId("openSettings").click());
 byId("exploreType").addEventListener("change",reload);
+byId("exploreMode").addEventListener("change",reload);
 byId("exploreSort").addEventListener("change",reload);
 byId("exploreGenre").addEventListener("change",reload);
 byId("exploreRating").addEventListener("change",reload);
