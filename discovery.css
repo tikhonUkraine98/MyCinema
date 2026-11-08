@@ -52,3 +52,14 @@
 #exploreProgress{margin:12px 0 24px}
 #exploreMore{margin-top:14px}
 @media(max-width:580px){.catalog-explore-filters{padding:10px;gap:8px}.catalog-explore-filters label{flex-basis:calc(50% - 4px)}.catalog-explore-filters .action{flex:1}.catalog-result-actions{flex-direction:column}}
+
+#sourceDialog{max-width:810px;max-height:90vh;overflow:auto}
+#sourceDialog .search-row{margin-top:15px}
+#sourceResults{display:grid;gap:13px;margin:20px 0}
+.source-card{padding:15px;border:1px solid var(--stroke);border-radius:13px;background:#101722}
+.source-card h3{font-size:16px;font-weight:700;margin:0}
+.source-card .micro{margin:4px 0 10px}
+.source-actions{display:flex;gap:7px;flex-wrap:wrap;margin:13px 0 5px}
+.source-actions .action{font-size:12px;min-height:34px;padding:7px 11px}
+.source-file-names{color:var(--muted);font-size:11px;overflow-wrap:anywhere;margin:9px 0 0}
+@media(max-width:580px){.source-actions>*{flex:1}.source-card{padding:11px}}
