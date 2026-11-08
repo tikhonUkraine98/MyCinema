@@ -28,6 +28,7 @@ class FakeNode{
   }
   click(){return this.dispatchEvent({type:"click",preventDefault(){}});}
   focus(){}
+  setAttribute(name,value){this[name]=value;}
   pause(){}
   play(){return Promise.resolve();}
   load(){if(this.src && this.tagName==="VIDEO" && this.onloadedmetadata)this.onloadedmetadata();}
@@ -97,4 +98,13 @@ assert.ok(licenseInfo("http://creativecommons.org/licenses/by/4.0/"));
 assert.equal(licenseInfo("https://example.com/licenses/by/4.0/"),null);
 assert.equal(videoFiles([{name:"episode.mp4",size:30000000},
   {name:"preview.mp4",size:30000000},{name:"tiny.mp4",size:100}], "item-1").length,1);
-console.log("Browser smoke passed: module initialization, navigation, open-source dialog, license and file validation.");
+const item={title:"Demo Archive Series",license:{name:"CC BY",url:"https://creativecommons.org/licenses/by/4.0/"},
+  itemUrl:"https://archive.org/details/demo-series",creator:"Creator"};
+const added=window.MyCinemaSources.addToLibrary(item,[
+  {url:"https://archive.org/download/demo-series/episode01.mp4"}]);
+assert.equal(added.count,1);
+assert.equal(elements.get("watchScreen").hidden,false);
+const library=JSON.parse(localStorage.getItem("my_video_library_v2"));
+assert.equal(library.series.length,1);
+assert.equal(library.series[0].seasons[0].rights.creator,"Creator");
+console.log("Browser smoke passed: modules, navigation, licensing, validated import and persistent provenance.");
