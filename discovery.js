@@ -241,6 +241,9 @@
           byId("episodeTotal").value = Math.min(ss.episode_count || 8, 60);
         }
       }, true));
+      toolbar.append(action("Знайти доступні MP4/WebM",()=>{
+        window.MyCinemaSources?.openWithTitle(show.original_name||show.name||"");
+      },false));
       const link = el("a", "action", "Відкрити на TMDB");
       link.href = "https://www.themoviedb.org/tv/" + show.id;
       link.target = "_blank";
