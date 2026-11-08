@@ -68,6 +68,19 @@ const localStorage={
   removeItem(key){entries.delete(key);}
 };
 const window={scrollTo(){},addEventListener(){},isSecureContext:true};
+const FAKE_BYTES=17*1024*1024;
+const mockStream=()=>({
+  getReader(){
+    let used=false;
+    return {
+      async read(){
+        if(used)return {done:true};
+        used=true;return {done:false,value:{byteLength:FAKE_BYTES}};
+      },
+      async cancel(){}
+    };
+  }
+});
 const fakeFetch=async (input,options={})=>{
   const url=String(input);
   if(url.startsWith("https://archive.org/advancedsearch.php"))
@@ -81,8 +94,12 @@ const fakeFetch=async (input,options={})=>{
     },files:[{name:"episode01.mp4",format:"MPEG4",size:"50000000"}]})};
   if(options.method==="HEAD" && url.startsWith("https://archive.org/download/demo-series/"))
     return {ok:true,status:200,headers:new Headers({
-      "content-type":"video/mp4","content-length":"50000000"
+      "content-type":"video/mp4","content-length":String(FAKE_BYTES)
     })};
+  if(!options.method && url.startsWith("https://archive.org/download/demo-series/"))
+    return {ok:true,status:200,headers:new Headers({
+      "content-type":"video/mp4","content-length":String(FAKE_BYTES)
+    }),body:mockStream()};
   throw Error("Unexpected network request in smoke test: "+url);
 };
 const sandbox=vm.createContext({
@@ -132,4 +149,25 @@ assert.equal(status.ok,true);
 const browsed=await window.MyCinemaSources.browseOpenEpisodes(1,()=>{});
 assert.equal(browsed.items.length,1);
 assert.equal(browsed.items[0].preVerified.length,1);
-console.log("Browser smoke passed: modules, API fixtures, archive browsing, licensing, import and persistent provenance.");
+let savedSize=0;
+const fileHandle={
+  async getFile(){return {size:savedSize};},
+  async createWritable(){
+    let next=0;
+    return {
+      async write(chunk){next+=chunk.byteLength;},
+      async seek(position){next=position;},
+      async close(){savedSize=next;},
+      async abort(){}
+    };
+  }
+};
+window.showSaveFilePicker=async()=>fileHandle;
+window.showDirectoryPicker=async()=>({getDirectoryHandle:async()=>({})});
+await window.MyCinemaDownloader.downloadOne();
+assert.equal(savedSize,FAKE_BYTES);
+assert.match(elements.get("downloadProgress").textContent,/Збережено/);
+await window.MyCinemaDownloader.downloadOne();
+assert.equal(savedSize,FAKE_BYTES);
+assert.match(elements.get("downloadProgress").textContent,/вже збережено/);
+console.log("Browser smoke passed: modules, Archive API, license verification, import, download and duplicate file checks.");
