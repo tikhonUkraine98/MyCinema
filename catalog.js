@@ -4,6 +4,7 @@ const byId = id => document.getElementById(id);
 const DISC = window.MyCinemaDiscovery;
 const PAGE_SIZE = 20;
 const PROVIDER_CONCURRENCY = 4;
+let genresLoaded = false;
 const MAX_PROVIDER_CACHE = 300;
 const CACHE_TTL_MS = 30 * 60 * 1000;
 const providerCache = new Map();
@@ -224,17 +225,21 @@ function reload() {
   byId("exploreEmpty").hidden=true;
   byId("exploreMore").hidden=true;
   setLoading(false);
-  if(!localStorage.getItem("mycinema_tmdb_token_v1")) {
+  let hasKey=false;
+  try{hasKey=!!localStorage.getItem("mycinema_tmdb_token_v1");}catch(_){}
+  if(!hasKey) {
     message("Для каталогу введи TMDB API-ключ у налаштуваннях. Ключ зберігається локально.");
     return;
   }
   loadNext();
 }
 async function genres() {
+  if(genresLoaded)return;
   try {
     const data=await DISC.tmdb("/genre/tv/list",{});
     const select=byId("exploreGenre");
     if(!select)return;
+    genresLoaded=true;
     for(const item of data.genres || []) {
       if(!Number.isInteger(item.id))continue;
       const option=node("option","",item.name);
