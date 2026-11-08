@@ -13,4 +13,6 @@ jobs:
         with:
           node-version: '22'
       - name: Validate HTML and JavaScript
-        run: node tests/verify.mjs
+        run: |
+          node tests/verify.mjs
+          node tests/browser-smoke.mjs
