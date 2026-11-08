@@ -69,10 +69,11 @@ async function getJson(url) {
   }finally{clearTimeout(timeout);}
 }
 function pickTitle(text) {return Array.isArray(text)?String(text[0]||""):String(text||"");}
-async function find(title) {
+async function find(title,options={}) {
   const normalized=String(title||"").trim();
+  const candidateLimit=Math.max(1,Math.min(MAX_METADATA_RESULTS,Number(options.maxResults)||MAX_METADATA_RESULTS));
   if(normalized.length<3||normalized.length>140)throw Error("Введи повну назву (3–140 символів).");
-  const cacheKey=clean(normalized);
+  const cacheKey=clean(normalized)+":"+candidateLimit;
   const old=pool.get(cacheKey);
   if(old&&Date.now()-old.when<CACHE_MS)return old.items;
   const q='title:("'+normalized.replace(/["\\]/g," ").replace(/\s+/g," ").trim()+'") AND mediatype:movies';
@@ -80,7 +81,7 @@ async function find(title) {
   ["identifier","title"].forEach(field=>params.append("fl[]",field));
   const response=await getJson(IA+"/advancedsearch.php?"+params);
   const docs=(response.response?.docs||[]).filter(item=>
-    validId(item.identifier)&&titleMatches(pickTitle(item.title),normalized)).slice(0,MAX_METADATA_RESULTS);
+    validId(item.identifier)&&titleMatches(pickTitle(item.title),normalized)).slice(0,candidateLimit);
   const items=[];
   let at=0;
   async function worker() {
