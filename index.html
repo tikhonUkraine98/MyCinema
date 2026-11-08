@@ -238,6 +238,15 @@
         <button class="action" id="exploreSettings" type="button">Країна / API</button>
       </form>
       <p id="exploreProgress" class="micro" role="status" aria-live="polite">Джерела ще не перевірялися.</p>
+      <div id="exploreNoKey" class="empty" hidden>
+        <p>Для каталогу серіалів TMDB потрібен власний API-ключ.</p>
+        <p class="micro">Отримай ключ для некомерційного використання або шукай відкриті відеофайли без ключа.</p>
+        <div class="source-actions">
+          <button id="exploreAddKey" class="action primary" type="button">Ввести API-ключ</button>
+          <a class="action" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener noreferrer">Отримати ключ TMDB</a>
+          <button id="exploreWithoutKey" class="action" type="button">Пошук відео без ключа</button>
+        </div>
+      </div>
       <div id="exploreResults" class="discovery-grid"></div>
       <p class="empty" id="exploreEmpty" hidden>Наразі немає результатів для цих фільтрів.</p>
       <button id="exploreMore" class="action primary" type="button" hidden>Завантажити ще серіали</button>
@@ -816,7 +825,9 @@ if (state.current) {
   <dialog id="settingsDialog" aria-labelledby="settingsTitle">
     <form id="settingsForm" class="dialog-inner" method="dialog">
       <h2 class="dialog-title" id="settingsTitle">Налаштування пошуку</h2>
-      <p class="form-guide">Для пошуку серіалів потрібен власний TMDB API Key або API Read Access Token. Не зберігай ключ у публічному GitHub.</p>
+      <p class="form-guide">Для каталогу TMDB потрібен особистий API-ключ. Для відкритого архіву Internet Archive він не потрібен.</p>
+      <p class="form-guide"><strong>Як отримати:</strong> зареєструйся на TMDB → Налаштування → API → Request an API Key → Developer. Після цього скопіюй API Key (v3) або API Read Access Token (v4).</p>
+      <p class="form-guide"><a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener noreferrer">Отримати TMDB API-ключ</a>. Не публікуй його в GitHub і не надсилай іншим.</p>
       <div class="field full">
         <label for="tmdbToken">TMDB API Key / Read Access Token</label>
         <input id="tmdbToken" type="password" autocomplete="off" spellcheck="false" placeholder="Встав ключ із налаштувань TMDB">
