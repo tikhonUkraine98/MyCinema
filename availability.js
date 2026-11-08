@@ -104,7 +104,8 @@ function probe(url) {
   });
 }
 async function scan(series, onUpdate, onProgress, all=false) {
-  if (scanning) return;
+  // Друга перевірка не пропускається, якщо автоматична вже працює.
+  while (scanning) await new Promise(resolve => setTimeout(resolve,150));
   scanning = true;
   const controls = ["verifySources","verifyAll"].map(id => document.getElementById(id)).filter(Boolean);
   controls.forEach(button => button.disabled = true);
