@@ -126,6 +126,15 @@ function renderCard(row, providers, archiveMatch=null) {
       }catch(e){message(e.message||"Помилка імпорту відео.",true);}
     });
     buttons.append(importBtn);
+    const downloadArchive=node("button","action","Завантажити цей файл");
+    downloadArchive.type="button";
+    downloadArchive.addEventListener("click",()=>{
+      try {
+        window.MyCinemaSources.addToLibrary(archiveMatch.item,[archiveMatch.file]);
+        window.MyCinemaDownloader?.downloadOne();
+      }catch(e){message(e.message||"Не вдалося почати завантаження.",true);}
+    });
+    buttons.append(downloadArchive);
   }
   if(local) {
     const play=node("button","action primary","Моє відео");
