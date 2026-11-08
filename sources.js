@@ -330,10 +330,17 @@ async function browseNext() {
     browsePage=result.page;
     DOM("sourceBrowseMore").hidden=!result.hasMore;
     render(result.items);
+    const st=result.stats||{};
+    const diagnostic="Із "+(st.candidates||0)+" записів: "+
+      (st.withoutLicense||0)+" без прийнятної ліцензії, "+
+      (st.withoutVideo||0)+" без придатного MP4/WebM, "+
+      (st.unreachable||0)+" без підтвердженого доступу до файлу, "+
+      (st.notPlayable||0)+" без перевіреного відтворення, "+
+      (st.errors||0)+" з технічними помилками.";
     setStatus(result.items.length?
-      "Перевірені відкриті відео цієї сторінки: "+result.items.length+
-      ". Можеш додати файл у бібліотеку." :
-      "На цій сторінці немає відео, яке пройшло перевірку. Спробуй наступну сторінку.");
+      "Знайдено відео: "+result.items.length+". "+diagnostic :
+      "Поки немає підтверджених відео на цій сторінці. "+diagnostic+
+      " Спробуй наступну сторінку. Це не означає, що архів порожній.");
   }catch(e){setStatus(e.message||"Помилка архівного каталогу.",true);}
   finally{busy=false;DOM("sourceBrowse").disabled=false;DOM("sourceBrowseMore").disabled=false;}
 }
