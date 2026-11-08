@@ -157,6 +157,7 @@
       <div class="nav-actions">
         <button class="action" id="openLibrary" type="button">Бібліотека</button>
         <button class="action" id="openCatalogExplore" type="button">Каталог серіалів</button>
+        <button class="action" id="openSources" type="button">Пошук відкритих файлів</button>
         <button class="action" id="openSearch" type="button">⌕ Пошук за назвою</button>
         <button class="action" id="openSettings" type="button">⚙ Налаштування</button>
         <button class="action primary" id="addSeries" type="button">+ Додати серіал</button>
@@ -795,9 +796,27 @@ if (state.current) {
     </form>
   </dialog>
   <link rel="stylesheet" href="./discovery.css">
+
+  <dialog id="sourceDialog" aria-labelledby="sourceTitle">
+    <div class="dialog-inner">
+      <h2 id="sourceTitle" class="dialog-title">Відкриті відеоджерела</h2>
+      <p class="form-guide">Пошук Internet Archive лише серед матеріалів із зазначеними відкритими ліцензіями. Система не обходить платні підписки або DRM.</p>
+      <form id="sourceSearchForm" class="search-row">
+        <input id="sourceQuery" type="search" placeholder="Введи назву серіалу" required minlength="3" maxlength="140" aria-label="Назва для пошуку відкритого відео">
+        <button id="sourceSearch" class="action primary" type="submit">Знайти файли</button>
+      </form>
+      <p class="micro" id="sourceStatus" role="status" aria-live="polite"></p>
+      <div id="sourceResults"></div>
+      <div class="dialog-buttons">
+        <button id="closeSources" class="action" type="button">Закрити</button>
+      </div>
+    </div>
+  </dialog>
+
   <script src="./availability.js"></script>
   <script src="./discovery.js"></script>
   <script src="./catalog.js"></script>
   <script src="./downloader.js"></script>
+  <script src="./sources.js"></script>
 </body>
 </html>
