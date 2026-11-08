@@ -68,6 +68,23 @@ const localStorage={
   removeItem(key){entries.delete(key);}
 };
 const window={scrollTo(){},addEventListener(){},isSecureContext:true};
+const fakeFetch=async (input,options={})=>{
+  const url=String(input);
+  if(url.startsWith("https://archive.org/advancedsearch.php"))
+    return {ok:true,status:200,json:async()=>({response:{docs:[
+      {identifier:"demo-series",title:"Demo Archive Series Episode 1"}
+    ]}})};
+  if(url.startsWith("https://archive.org/metadata/demo-series"))
+    return {ok:true,status:200,json:async()=>({metadata:{
+      title:"Demo Archive Series Episode 1",creator:"Creator",
+      licenseurl:"https://creativecommons.org/licenses/by/4.0/"
+    },files:[{name:"episode01.mp4",format:"MPEG4",size:"50000000"}]})};
+  if(options.method==="HEAD" && url.startsWith("https://archive.org/download/demo-series/"))
+    return {ok:true,status:200,headers:new Headers({
+      "content-type":"video/mp4","content-length":"50000000"
+    })};
+  throw Error("Unexpected network request in smoke test: "+url);
+};
 const sandbox=vm.createContext({
   document,window,localStorage,
   console,URL,URLSearchParams,AbortController,DOMException,
@@ -75,7 +92,7 @@ const sandbox=vm.createContext({
   setTimeout,clearTimeout,
   confirm(){return true;},alert(message){throw Error("Unexpected alert: "+message);},
   Event:class Event{constructor(type){this.type=type;}},
-  Blob,fetch(){throw Error("Network should not run during initialization");}
+  Blob,Headers,fetch:fakeFetch
 });
 vm.runInContext(inline,sandbox,{filename:"index-inline.js"});
 for(const path of ["availability.js","discovery.js","catalog.js","downloader.js","sources.js"])
@@ -107,4 +124,12 @@ assert.equal(elements.get("watchScreen").hidden,false);
 const library=JSON.parse(localStorage.getItem("my_video_library_v2"));
 assert.equal(library.series.length,1);
 assert.equal(library.series[0].seasons[0].rights.creator,"Creator");
-console.log("Browser smoke passed: modules, navigation, licensing, validated import and persistent provenance.");
+const found=await window.MyCinemaSources.find("Demo Archive Series");
+assert.equal(found.length,1);
+assert.equal(found[0].files[0].name,"episode01.mp4");
+const status=await window.MyCinemaSources.checkFile(found[0].files[0].url);
+assert.equal(status.ok,true);
+const browsed=await window.MyCinemaSources.browseOpenEpisodes(1,()=>{});
+assert.equal(browsed.items.length,1);
+assert.equal(browsed.items[0].preVerified.length,1);
+console.log("Browser smoke passed: modules, API fixtures, archive browsing, licensing, import and persistent provenance.");
