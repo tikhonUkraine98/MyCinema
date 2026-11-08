@@ -29,6 +29,9 @@ assert.match(sourcesScript, /licenseInfo/, "License check missing");
 assert.match(sourcesScript, /checkFile/, "Archive source verification missing");
 assert.match(sourcesScript, /addToLibrary/, "One-click import missing");
 assert.match(sourcesScript, /browseOpenEpisodes/, "Title-free archive browsing missing");
+assert.match(sourcesScript, /licenseurl:http\*by\*/, "Archive license-index filtering missing");
+assert.match(sourcesScript, /method:"GET"/, "Archive byte-range fallback missing");
+assert.match(sourcesScript, /stats=\{candidates:/, "Archive diagnostic counters missing");
 const catalogScript = readFileSync(new URL("../catalog.js", import.meta.url), "utf8");
 new vm.Script(catalogScript, {filename: "catalog.js"});
 const downloaderScript = readFileSync(new URL("../downloader.js", import.meta.url), "utf8");
@@ -38,6 +41,7 @@ for(const name of ["catalog.js","downloader.js"]) {
 }
 for (const id of [
   "catalogExploreScreen","openCatalogExplore","exploreFilters","exploreResults","exploreMode",
+  "exploreNoKey","exploreAddKey","exploreWithoutKey",
   "openSources","sourceDialog","sourceSearchForm","sourceQuery","sourceSearch",
   "sourceStatus","sourceResults","closeSources","sourceBrowse","sourceBrowseMore",
   "openOfflineFiles","offlineFiles",
