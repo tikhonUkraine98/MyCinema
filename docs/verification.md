@@ -23,3 +23,7 @@
 This application **does not** provide unauthorized copies of subscription-only episodes. TMDB/JustWatch reports streaming-platform listings, not playable downloads. The open-license Archive connector searches public metadata and verifies candidate media on a best-effort basis; incorrect third-party licensing claims are possible and a successful probe cannot guarantee an entire file is valid. Streaming and Archive services may rate-limit or change APIs.
 
 Performance optimizations: no more than three candidate-provider lookups in parallel, bounded Archive metadata lookup, source verification cache, and local video probes of at most two concurrent media streams.
+
+## Regression note
+
+The verified download check must recognize both Ukrainian wordings «вже збережено» and «уже збережено», because the player uses the latter. Automated tests should accept either wording while still checking the actual byte count.
