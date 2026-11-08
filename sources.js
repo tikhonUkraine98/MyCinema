@@ -111,9 +111,9 @@ async function browseOpenEpisodes(page=1,onProgress=()=>{}) {
   const pageNo=Math.max(1,Math.min(10000,Number(page)||1));
   // Archive.org indexes licenseurl: prefilter openly licensed items *before*
   // expensive per-file metadata and byte-range checks. Never infer rights from titles.
-  const allowedLicenseQuery='(licenseurl:http*by/4.0* OR licenseurl:http*by/3.0* OR '+
-    'licenseurl:http*by-sa/4.0* OR licenseurl:http*by-sa/3.0* OR '+
-    'licenseurl:http*zero/1.0* OR licenseurl:http*mark/1.0*)';
+  // Archive.org documents wildcard licenseurl queries. Fetch a broad candidate
+  // set and apply our exact rights allowlist to each item's metadata.
+  const allowedLicenseQuery='(licenseurl:http*by* OR licenseurl:http*zero* OR licenseurl:http*mark*)';
   const q='mediatype:movies AND '+allowedLicenseQuery+
     ' AND (subject:television OR title:episode OR title:series)';
   const params=new URLSearchParams({q,rows:"30",page:String(pageNo),output:"json"});
