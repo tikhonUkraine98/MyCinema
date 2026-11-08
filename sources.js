@@ -264,8 +264,11 @@ function addToLibrary(item,files) {
       itemUrl:item.itemUrl,verifiedAt:Date.now()}
   });
   persist();
-  if(typeof showLibrary==="function")showLibrary();
-  return {title,season:seasonNo,count:urls.length};
+  if(typeof loadEpisode==="function" && typeof showWatch==="function"){
+    loadEpisode(show.id,seasonNo,1,false);
+    showWatch();
+  }else if(typeof showLibrary==="function")showLibrary();
+  return {title,seriesId:show.id,season:seasonNo,count:urls.length};
 }
 window.MyCinemaSources={openWithTitle,find,checkFile,addToLibrary,helpers:{titleMatches,licenseInfo,videoFiles}};
 })();
