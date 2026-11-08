@@ -169,5 +169,5 @@ assert.equal(savedSize,FAKE_BYTES);
 assert.match(elements.get("downloadProgress").textContent,/Збережено/);
 await window.MyCinemaDownloader.downloadOne();
 assert.equal(savedSize,FAKE_BYTES);
-assert.match(elements.get("downloadProgress").textContent,/вже збережено/);
+assert.match(elements.get("downloadProgress").textContent,/(?:вже|уже) збережено/);
 console.log("Browser smoke passed: modules, Archive API, license verification, import, download and duplicate file checks.");
