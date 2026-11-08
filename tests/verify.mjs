@@ -19,6 +19,24 @@ assert.match(availabilityScript, /onloadedmetadata/, "Metadata probe missing");
 assert.match(availabilityScript, /onseeked/, "Media seek verification missing");
 assert.match(availabilityScript, /MIN_EPISODE_SECONDS/, "Short preview filter missing");
 assert.match(availabilityScript, /MAX_BATCH_AUTO/, "Automatic scan limit missing");
+const catalogScript = readFileSync(new URL("../catalog.js", import.meta.url), "utf8");
+new vm.Script(catalogScript, {filename: "catalog.js"});
+const downloaderScript = readFileSync(new URL("../downloader.js", import.meta.url), "utf8");
+new vm.Script(downloaderScript, {filename: "downloader.js"});
+for(const name of ["catalog.js","downloader.js"]) {
+  assert.match(html, new RegExp('src="\\./' + name.replace(".","\\.") + '"'), "Missing module "+name);
+}
+for (const id of [
+  "catalogExploreScreen","openCatalogExplore","exploreFilters","exploreResults",
+  "exploreProgress","exploreMore","exploreApply","exploreSettings","exploreEmpty",
+  "exploreType","exploreSort","exploreGenre","exploreRating",
+  "downloadEpisode","downloadSeason","cancelDownload","downloadProgress"
+]) assert.match(html, new RegExp('id="' + id + '"'), "Missing #"+id);
+assert.match(catalogScript,/checkProviders/, "Catalog lacks per-show availability verification");
+assert.match(catalogScript,/with_watch_monetization_types/, "Watch-region filter absent");
+assert.match(downloaderScript,/showSaveFilePicker/, "Episode downloader missing");
+assert.match(downloaderScript,/showDirectoryPicker/, "Season downloader missing");
+assert.match(downloaderScript,/fetch\(url/, "Streaming download missing");
 assert.match(html, /src="\.\/discovery\.js"/);
 assert.match(html, /href="\.\/discovery\.css"/);
 for (const id of [
@@ -31,4 +49,4 @@ for (const id of [
 assert.doesNotMatch(html, /werkecdn\.me/i, "Do not publish third-party media URLs");
 assert.match(discoveryScript, /watch\/providers/, "Provider discovery missing");
 assert.match(playerScript, /my_video_library_v2/, "Old local library compatibility missing");
-console.log("MyCinema checks passed: JS syntax, UI hooks, video verification, discovery and safe initial state.");
+console.log("MyCinema checks passed: JS syntax, UI hooks, verified platform catalog, streaming downloader, and video verification.");
