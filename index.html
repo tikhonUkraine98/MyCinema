@@ -178,7 +178,7 @@
       <div class="availability-toolbar">
         <label class="availability-filter">
           <input id="onlyPlayable" type="checkbox" checked>
-          Показувати лише серіали з перевіреною серією
+          Показувати лише серіали з попередньо доступним відео
         </label>
         <button class="action" id="verifySources" type="button">Перевірити перші серії</button>
         <button class="action" id="verifyAll" type="button">Перевірити всі серії</button>
@@ -405,11 +405,11 @@ function renderLibrary() {
   const visible = state.series.filter(s =>
     !verifiedOnly || (availability && availability.summary(s).verified > 0));
   $("libraryCount").textContent = verifiedOnly ?
-    `${visible.length} підтверджено із ${state.series.length}` :
+    `${visible.length} із доступними фрагментами із ${state.series.length}` :
     `${state.series.length} серіалів`;
   if (!visible.length) {
     catalog.append(el("div","empty",state.series.length ?
-      "Перевірених джерел поки немає. Перевірка може тривати. Щоб переглянути неперевірені або недоступні серіали, зніми позначку фільтра." :
+      "Поки немає попередньо доступних відеоджерел. Перевірка може тривати. Щоб переглянути неперевірені або недоступні серіали, зніми позначку фільтра." :
       "Бібліотека порожня. Додай доступні тобі відеопосилання через «+ Додати серіал»."));
     return;
   }
@@ -426,7 +426,7 @@ function renderLibrary() {
     if (availability) {
       const result = availability.summary(s);
       const status = result.verified ?
-        `Перевірено: ${result.verified} із ${result.total} серій` :
+        `Можна отримати фрагменти: ${result.verified} із ${result.total} серій` :
         `Джерела не підтверджено · ${result.checked} із ${result.total} перевірено`;
       meta.append(el("p",result.verified?"availability-ok":"availability-pending",status));
       if (result.preview) meta.append(el("p","availability-warning",
