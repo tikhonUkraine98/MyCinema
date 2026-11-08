@@ -179,7 +179,7 @@ async function checkOpenArchive(row) {
   if(!adapter)return null;
   const name=(row.original_name||row.name||"").trim();
   if(name.length<4)return null;
-  const matches=await adapter.find(name);
+  const matches=await adapter.find(name,{maxResults:3});
   for(const item of matches.slice(0,3)) {
     // At most one verified episode candidate per item; auto-scan is intentionally bounded.
     for(const file of item.files.slice(0,2)) {
@@ -199,7 +199,7 @@ async function checkOpenArchive(row) {
 }
 async function verifyPage(rows, region, type, session, mode) {
   let index=0,checked=0,successful=0,failures=0;
-  const accepted=new Array(rows.length).fill(null);
+  // Display cards as soon as verified instead of waiting for the whole page.
   async function worker() {
     while(index<rows.length && session===stateCatalog.session) {
       const position=index++;
@@ -207,10 +207,22 @@ async function verifyPage(rows, region, type, session, mode) {
       try {
         if(mode==="downloads") {
           const match=await checkOpenArchive(row);
-          if(match) {accepted[position]={row,providers:[],archiveMatch:match};successful++;}
+          if(match) {
+            successful++;
+            if(session===stateCatalog.session) {
+              byId("exploreResults").append(renderCard(row,[],match));
+              stateCatalog.shown++;
+            }
+          }
         } else {
           const providers=await checkProviders(row,region,type);
-          if(providers.length) {accepted[position]={row,providers};successful++;}
+          if(providers.length) {
+            successful++;
+            if(session===stateCatalog.session) {
+              byId("exploreResults").append(renderCard(row,providers));
+              stateCatalog.shown++;
+            }
+          }
         }
       }catch(_){failures++;}
       checked++;
@@ -221,10 +233,6 @@ async function verifyPage(rows, region, type, session, mode) {
   }
   await Promise.all(Array.from({length:Math.min(PROVIDER_CONCURRENCY,rows.length)},()=>worker()));
   if(session!==stateCatalog.session)return {aborted:true};
-  for(const item of accepted)if(item) {
-    byId("exploreResults").append(renderCard(item.row,item.providers,item.archiveMatch));
-    stateCatalog.shown++;
-  }
   return {successful,failures,checked};
 }
 async function loadNext() {
