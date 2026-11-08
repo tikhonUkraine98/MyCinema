@@ -109,13 +109,21 @@ async function find(title,options={}) {
 }
 async function browseOpenEpisodes(page=1,onProgress=()=>{}) {
   const pageNo=Math.max(1,Math.min(10000,Number(page)||1));
-  // Search public catalog by TV-related metadata, not a copyrighted content index.
-  const q='mediatype:movies AND (subject:television OR title:episode OR title:series)';
-  const params=new URLSearchParams({q,rows:"24",page:String(pageNo),output:"json"});
+  // Archive.org indexes licenseurl: prefilter openly licensed items *before*
+  // expensive per-file metadata and byte-range checks. Never infer rights from titles.
+  const allowedLicenseQuery='(licenseurl:http*by/4.0* OR licenseurl:http*by/3.0* OR '+
+    'licenseurl:http*by-sa/4.0* OR licenseurl:http*by-sa/3.0* OR '+
+    'licenseurl:http*zero/1.0* OR licenseurl:http*mark/1.0*)';
+  const q='mediatype:movies AND '+allowedLicenseQuery+
+    ' AND (subject:television OR title:episode OR title:series)';
+  const params=new URLSearchParams({q,rows:"30",page:String(pageNo),output:"json"});
   ["identifier","title"].forEach(field=>params.append("fl[]",field));
+  params.append("sort[]","downloads desc");
   const data=await getJson(IA+"/advancedsearch.php?"+params);
-  const docs=(data.response?.docs||[]).filter(x=>validId(x.identifier)).slice(0,16);
+  const docs=(data.response?.docs||[]).filter(x=>validId(x.identifier)).slice(0,18);
   const accepted=[];
+  const stats={candidates:docs.length,withoutLicense:0,withoutVideo:0,
+    unreachable:0,notPlayable:0,errors:0};
   let index=0,done=0;
   async function worker() {
     while(index<docs.length) {
@@ -124,17 +132,17 @@ async function browseOpenEpisodes(page=1,onProgress=()=>{}) {
         const data=await getJson(IA+"/metadata/"+encodeURIComponent(doc.identifier));
         const meta=data.metadata||{};
         const license=licenseInfo(meta.licenseurl);
-        if(!license)continue;
+        if(!license){stats.withoutLicense++;continue;}
         const files=videoFiles(data.files,doc.identifier);
-        if(!files.length)continue;
+        if(!files.length){stats.withoutVideo++;continue;}
         const first=files[0];
         const head=await checkFile(first.url);
-        if(!head.ok)continue;
+        if(!head.ok){stats.unreachable++;continue;}
         const checker=window.MyCinemaAvailability;
-        if(!checker)continue;
+        if(!checker){stats.notPlayable++;continue;}
         await checker.scan([{seasons:[{episodeUrls:[first.url]}]}],()=>{},()=>{},true);
         const cached=checker.cached(first.url);
-        if(cached?.status!=="available" || cached.duration<900)continue;
+        if(cached?.status!=="available" || cached.duration<900){stats.notPlayable++;continue;}
         accepted.push({
           identifier:doc.identifier,
           title:pickTitle(meta.title)||pickTitle(doc.title),
@@ -143,16 +151,16 @@ async function browseOpenEpisodes(page=1,onProgress=()=>{}) {
           creator:pickTitle(meta.creator).slice(0,180),
           preVerified:[first]
         });
-      }catch(_) { /* Reject unverified sources */ }
+      }catch(_) { stats.errors++; }
       finally {
         done++;
-        onProgress("Перевірено "+done+" із "+docs.length+" архівних записів · "+
-          "знайдено "+accepted.length+" придатних відео.");
+        onProgress("Перевірено "+done+" із "+docs.length+" записів · "+
+          "відеофайлів із перевіреним відтворенням: "+accepted.length+".");
       }
     }
   }
   await Promise.all([worker(),worker()]);
-  return {items:accepted,page:pageNo,hasMore:docs.length>0};
+  return {items:accepted,page:pageNo,hasMore:docs.length>0,stats};
 }
 async function checkFile(url) {
   // Direct CORS HEAD request; do not infer file availability from the title alone.
