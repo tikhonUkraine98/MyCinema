@@ -19,6 +19,12 @@ assert.match(availabilityScript, /onloadedmetadata/, "Metadata probe missing");
 assert.match(availabilityScript, /onseeked/, "Media seek verification missing");
 assert.match(availabilityScript, /MIN_EPISODE_SECONDS/, "Short preview filter missing");
 assert.match(availabilityScript, /MAX_BATCH_AUTO/, "Automatic scan limit missing");
+const sourcesScript = readFileSync(new URL("../sources.js", import.meta.url), "utf8");
+new vm.Script(sourcesScript, {filename:"sources.js"});
+assert.match(html, /src="\.\/sources\.js"/, "Open video source module missing");
+assert.match(sourcesScript, /licenseInfo/, "License check missing");
+assert.match(sourcesScript, /checkFile/, "Archive source verification missing");
+assert.match(sourcesScript, /addToLibrary/, "One-click import missing");
 const catalogScript = readFileSync(new URL("../catalog.js", import.meta.url), "utf8");
 new vm.Script(catalogScript, {filename: "catalog.js"});
 const downloaderScript = readFileSync(new URL("../downloader.js", import.meta.url), "utf8");
@@ -27,12 +33,16 @@ for(const name of ["catalog.js","downloader.js"]) {
   assert.match(html, new RegExp('src="\\./' + name.replace(".","\\.") + '"'), "Missing module "+name);
 }
 for (const id of [
-  "catalogExploreScreen","openCatalogExplore","exploreFilters","exploreResults",
+  "catalogExploreScreen","openCatalogExplore","exploreFilters","exploreResults","exploreMode",
+  "openSources","sourceDialog","sourceSearchForm","sourceQuery","sourceSearch",
+  "sourceStatus","sourceResults","closeSources",
   "exploreProgress","exploreMore","exploreApply","exploreSettings","exploreEmpty",
   "exploreType","exploreSort","exploreGenre","exploreRating",
   "downloadEpisode","downloadSeason","cancelDownload","downloadProgress"
 ]) assert.match(html, new RegExp('id="' + id + '"'), "Missing #"+id);
 assert.match(catalogScript,/checkProviders/, "Catalog lacks per-show availability verification");
+assert.match(catalogScript,/checkOpenArchive/, "Catalog lacks licensed file verification");
+assert.match(catalogScript,/archiveMatch/, "Catalog cannot surface downloadable sources");
 assert.match(catalogScript,/with_watch_monetization_types/, "Watch-region filter absent");
 assert.match(downloaderScript,/showSaveFilePicker/, "Episode downloader missing");
 assert.match(downloaderScript,/showDirectoryPicker/, "Season downloader missing");
