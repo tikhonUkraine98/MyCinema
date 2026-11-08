@@ -106,6 +106,53 @@ async function find(title) {
   pool.set(cacheKey,{when:Date.now(),items});
   return items;
 }
+async function browseOpenEpisodes(page=1,onProgress=()=>{}) {
+  const pageNo=Math.max(1,Math.min(10000,Number(page)||1));
+  // Search public catalog by TV-related metadata, not a copyrighted content index.
+  const q='mediatype:movies AND (subject:television OR title:episode OR title:series)';
+  const params=new URLSearchParams({q,rows:"24",page:String(pageNo),output:"json"});
+  ["identifier","title"].forEach(field=>params.append("fl[]",field));
+  const data=await getJson(IA+"/advancedsearch.php?"+params);
+  const docs=(data.response?.docs||[]).filter(x=>validId(x.identifier)).slice(0,16);
+  const accepted=[];
+  let index=0,done=0;
+  async function worker() {
+    while(index<docs.length) {
+      const doc=docs[index++];
+      try {
+        const data=await getJson(IA+"/metadata/"+encodeURIComponent(doc.identifier));
+        const meta=data.metadata||{};
+        const license=licenseInfo(meta.licenseurl);
+        if(!license)continue;
+        const files=videoFiles(data.files,doc.identifier);
+        if(!files.length)continue;
+        const first=files[0];
+        const head=await checkFile(first.url);
+        if(!head.ok)continue;
+        const checker=window.MyCinemaAvailability;
+        if(!checker)continue;
+        await checker.scan([{seasons:[{episodeUrls:[first.url]}]}],()=>{},()=>{},true);
+        const cached=checker.cached(first.url);
+        if(cached?.status!=="available" || cached.duration<900)continue;
+        accepted.push({
+          identifier:doc.identifier,
+          title:pickTitle(meta.title)||pickTitle(doc.title),
+          license,files,
+          itemUrl:IA+"/details/"+encodeURIComponent(doc.identifier),
+          creator:pickTitle(meta.creator).slice(0,180),
+          preVerified:[first]
+        });
+      }catch(_) { /* Reject unverified sources */ }
+      finally {
+        done++;
+        onProgress("Перевірено "+done+" із "+docs.length+" архівних записів · "+
+          "знайдено "+accepted.length+" придатних відео.");
+      }
+    }
+  }
+  await Promise.all([worker(),worker()]);
+  return {items:accepted,page:pageNo,hasMore:docs.length>0};
+}
 async function checkFile(url) {
   // Direct CORS HEAD request; do not infer file availability from the title alone.
   const controller=new AbortController();
@@ -157,7 +204,9 @@ function render(results) {
     check.type="button";
     const add=make("button","action","Додати до бібліотеки");
     add.type="button";add.disabled=true;
-    let passing=[];
+    let passing=Array.isArray(item.preVerified)?item.preVerified:[];
+    add.disabled=!passing.length;
+    if(passing.length)check.textContent="Попередньо перевірено "+passing.length+" файл";
     check.addEventListener("click",async()=>{
       check.disabled=true;add.disabled=true;passing=[];
       setStatus("Перевіряю файли з "+item.title+"…");
@@ -236,6 +285,28 @@ async function submit(){
   }catch(e){if(current===serial)setStatus(e.message||"Помилка пошуку.",true);}
   finally{busy=false;DOM("sourceSearch").disabled=false;}
 }
+let browsePage=0;
+async function browseNext() {
+  if(busy)return;
+  busy=true;
+  DOM("sourceBrowse").disabled=true;
+  DOM("sourceBrowseMore").disabled=true;
+  const page=browsePage+1;
+  setStatus("Перевіряю відкриті архівні записи. Сторінка "+page+"…");
+  try {
+    const result=await browseOpenEpisodes(page,text=>setStatus(text));
+    browsePage=result.page;
+    DOM("sourceBrowseMore").hidden=!result.hasMore;
+    render(result.items);
+    setStatus(result.items.length?
+      "Перевірені відкриті відео цієї сторінки: "+result.items.length+
+      ". Можеш додати файл у бібліотеку." :
+      "На цій сторінці немає відео, яке пройшло перевірку. Спробуй наступну сторінку.");
+  }catch(e){setStatus(e.message||"Помилка архівного каталогу.",true);}
+  finally{busy=false;DOM("sourceBrowse").disabled=false;DOM("sourceBrowseMore").disabled=false;}
+}
+DOM("sourceBrowse").addEventListener("click",()=>{browsePage=0;browseNext();});
+DOM("sourceBrowseMore").addEventListener("click",browseNext);
 DOM("sourceSearchForm").addEventListener("submit",e=>{e.preventDefault();submit();});
 DOM("openSources").addEventListener("click",()=>openWithTitle(""));
 DOM("closeSources").addEventListener("click",()=>DOM("sourceDialog").close());
@@ -270,5 +341,5 @@ function addToLibrary(item,files) {
   }else if(typeof showLibrary==="function")showLibrary();
   return {title,seriesId:show.id,season:seasonNo,count:urls.length};
 }
-window.MyCinemaSources={openWithTitle,find,checkFile,addToLibrary,helpers:{titleMatches,licenseInfo,videoFiles}};
+window.MyCinemaSources={openWithTitle,find,checkFile,addToLibrary,browseOpenEpisodes,helpers:{titleMatches,licenseInfo,videoFiles}};
 })();
