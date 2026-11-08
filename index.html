@@ -278,6 +278,7 @@
               <p class="micro" id="episodePosition">Сезон 2 · серія 1 із 8</p>
             </div>
             <span id="qualityLabel" class="quality">HD 720p</span>
+            <span id="rightsBadge" class="micro" hidden></span>
           </div>
           <div class="controls">
             <button class="action" type="button" id="previous">← Попередня</button>
@@ -382,7 +383,17 @@ function normalizeState(value) {
       if (!Number.isInteger(s.number) || s.number < 1 || s.number > 30 || seasonNums.has(s.number)) throw Error("Невірний номер сезону.");
       seasonNums.add(s.number);
       if (typeof s.quality !== "string" || s.quality.length > 25 || !Array.isArray(s.episodeUrls) || s.episodeUrls.length < 1 || s.episodeUrls.length > 60 || !s.episodeUrls.every(validVideoURL)) throw Error("Невірні адреси відео.");
-      return {number:s.number, quality:s.quality, episodeUrls:[...s.episodeUrls]};
+      const rr=s.rights;
+      const rights=rr && typeof rr==="object" &&
+        /^https:\/\/creativecommons\.org\//.test(rr.url||"") &&
+        /^https:\/\/archive\.org\/details\//.test(rr.itemUrl||"") ? {
+          name:String(rr.name||"Ліцензія").slice(0,80),
+          url:String(rr.url).slice(0,1000),
+          creator:String(rr.creator||"").slice(0,180),
+          itemUrl:String(rr.itemUrl).slice(0,1000),
+          verifiedAt:Number.isFinite(rr.verifiedAt)?rr.verifiedAt:null
+        }:null;
+      return {number:s.number, quality:s.quality, episodeUrls:[...s.episodeUrls],rights};
     });
     clean.series.push({id:item.id, title:item.title.trim(), seasons});
   }
@@ -564,6 +575,15 @@ function loadEpisode(seriesId,seasonNumber,episodeNumber,autoplay=false) {
   $("episodeTitle").textContent = `Серія ${episodeNumber}`;
   $("episodePosition").textContent = `Сезон ${season.number} · серія ${episodeNumber} із ${season.episodeUrls.length}`;
   $("qualityLabel").textContent = season.quality;
+  $("rightsBadge").hidden=!season.rights;
+  $("rightsBadge").replaceChildren();
+  if(season.rights){
+    const anchor=el("a",null,season.rights.name+" · умови використання");
+    anchor.href=season.rights.itemUrl||season.rights.url;
+    anchor.target="_blank";anchor.rel="noopener noreferrer";
+    anchor.style.color="var(--good)";
+    $("rightsBadge").append(anchor);
+  }
   $("previous").disabled = episodeNumber<=1;
   $("next").disabled = episodeNumber>=season.episodeUrls.length;
   renderSeasonTabs(show);
