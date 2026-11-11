@@ -121,6 +121,12 @@ function renderCard(row, providers, archiveMatch=null) {
     window.MyCinemaSources?.openWithTitle(row.original_name||row.name||"");
   });
   buttons.append(probeSources);
+  const peerSearch=node("button","action","Пошук у PeerTube");
+  peerSearch.type="button";
+  peerSearch.addEventListener("click",()=>{
+    window.MyCinemaPeerTube?.open(row.original_name||row.name||"");
+  });
+  buttons.append(peerSearch);
   if(archiveMatch) {
     const importBtn=node("button","action primary","Додати відео");
     importBtn.type="button";
