@@ -99,9 +99,12 @@ function renderCard(row, providers, archiveMatch=null) {
   card.append(node("span","discovery-year",(year || "Рік невідомий")+rating));
   const local=getLocalSeries(row);
   if(local) card.append(node("span","catalog-verified","Власний перевірений потік"));
-  card.append(node("span","catalog-provider",archiveMatch ?
+  const sourceLabel=archiveMatch ?
     "Знайдено ліцензований файл: "+archiveMatch.item.license.name :
-    listProviderNames(providers)));
+    providers.length ? "Платформи: "+listProviderNames(providers) :
+    local ? "Є перевірене локальне відеоджерело" :
+    "Пряме відеоджерело в Internet Archive не підтверджено";
+  card.append(node("span","catalog-provider",sourceLabel));
   const buttons=node("div","catalog-result-actions");
   const details=node("button","action","Деталі");
   details.type="button";
@@ -198,42 +201,51 @@ async function checkOpenArchive(row) {
   return null;
 }
 async function verifyPage(rows, region, type, session, mode) {
-  let index=0,checked=0,successful=0,failures=0;
-  // Display cards as soon as verified instead of waiting for the whole page.
-  async function worker() {
-    while(index<rows.length && session===stateCatalog.session) {
-      const position=index++;
-      const row=rows[position];
+  let index=0,checked=0,confirmed=0,failed=0;
+  // The broad catalogue must never be hidden merely because no MP4 was found.
+  // Render TMDB candidates first, then annotate the source verification outcome.
+  async function worker(){
+    while(index<rows.length && session===stateCatalog.session){
+      const row=rows[index++];
       try {
-        if(mode==="downloads") {
+        if(mode==="all"){
           const match=await checkOpenArchive(row);
-          if(match) {
-            successful++;
-            if(session===stateCatalog.session) {
-              byId("exploreResults").append(renderCard(row,[],match));
-              stateCatalog.shown++;
-            }
+          if(session!==stateCatalog.session)return;
+          if(match){
+            confirmed++;
+            stateCatalog.shown++;
+            byId("exploreResults").append(renderCard(row,[],match));
+          } else {
+            // The card was already displayed from TMDB. Do not remove it.
+            // Absence from Archive is not proof that a series cannot be watched elsewhere.
+          }
+        } else if(mode==="downloads"){
+          const match=await checkOpenArchive(row);
+          if(match && session===stateCatalog.session) {
+            confirmed++;
+            stateCatalog.shown++;
+            byId("exploreResults").append(renderCard(row,[],match));
           }
         } else {
           const providers=await checkProviders(row,region,type);
-          if(providers.length) {
-            successful++;
-            if(session===stateCatalog.session) {
-              byId("exploreResults").append(renderCard(row,providers));
-              stateCatalog.shown++;
-            }
+          if(providers.length && session===stateCatalog.session) {
+            confirmed++;
+            stateCatalog.shown++;
+            byId("exploreResults").append(renderCard(row,providers));
           }
         }
-      }catch(_){failures++;}
+      }catch(_){failed++;}
       checked++;
       if(session!==stateCatalog.session)return;
-      message("Перевірено "+checked+" із "+rows.length+" серіалів · "+
-        "знайдено "+successful+(failures?" · помилки запитів: "+failures:""));
+      message("Перевірено "+checked+" із "+rows.length+" серіалів. "+
+        (mode==="all" ? "Знайдено відкритих відеоджерел: " :
+          mode==="downloads" ? "Серіалів із перевіреним відео: " :
+          "Серіалів із підтвердженими платформами: ")+confirmed+
+        (failed?" · технічних помилок: "+failed:"")+".");
     }
   }
   await Promise.all(Array.from({length:Math.min(PROVIDER_CONCURRENCY,rows.length)},()=>worker()));
-  if(session!==stateCatalog.session)return {aborted:true};
-  return {successful,failures,checked};
+  return {checked,confirmed,failed,aborted:session!==stateCatalog.session};
 }
 async function loadNext() {
   if(stateCatalog.busy || stateCatalog.page>=stateCatalog.pages) return;
@@ -249,13 +261,13 @@ async function loadNext() {
     include_adult:false,
     sort_by:byId("exploreSort").value,
   };
-  if(mode==="platforms"){
+  if(mode==="platforms") {
     query.watch_region=region;
     query.with_watch_monetization_types=CATEGORY_TYPES[type].join("|");
-  } else {
-    // Open-license archive uploads are usually old television works.
-    query["first_air_date.lte"]="1979-12-31";
   }
+  // Never constrain the TMDB discovery catalogue to pre-1980 releases.
+  const year=byId("exploreYear").value;
+  if(year)query["first_air_date.gte"]=year+"-01-01";
   const genre=byId("exploreGenre").value;
   if(genre)query.with_genres=genre;
   const rating=byId("exploreRating").value;
@@ -268,18 +280,28 @@ async function loadNext() {
     stateCatalog.pages=total;
     stateCatalog.page=next;
     stateCatalog.searched+=rows.length;
-    if(rows.length)await verifyPage(rows,region,type,session,mode);
+    if(mode==="all"){
+      for(const row of rows){
+        byId("exploreResults").append(renderCard(row,[]));
+        stateCatalog.shown++;
+      }
+    } else if(rows.length) {
+      await verifyPage(rows,region,type,session,mode);
+    }
     if(session!==stateCatalog.session)return;
     const remaining=stateCatalog.page<stateCatalog.pages;
     byId("exploreMore").hidden=!remaining;
-    message("Переглянуто "+stateCatalog.searched+" кандидатів · "+
-      (mode==="downloads"?"файли з відкритою ліцензією та перевіреним відеопотоком: ":
-       "підтверджено платформу у "+region+": ")+stateCatalog.shown+
-      " серіалів. "+
-      (remaining?"Можна завантажити наступну сторінку.":"Кінець результатів."));
+    message("Переглянуто "+stateCatalog.searched+" серіалів · "+
+      (mode==="all"?"карток у каталозі: ":
+        mode==="downloads"?"з перевіреним відкритим відеофайлом: ":
+        "з підтвердженими платформами у "+region+": ")+stateCatalog.shown+
+      ". "+(remaining?"Можна завантажити наступну сторінку.":"Кінець результатів."));
     if(!stateCatalog.shown) {
       byId("exploreEmpty").hidden=false;
-      byId("exploreEmpty").textContent="У цій вибірці поки не знайшлося підтверджених платформ. Зміни фільтри або завантаж наступну сторінку.";
+      byId("exploreEmpty").textContent=mode==="downloads"?
+        "У цій вибірці немає серіалів із перевіреними файлами Internet Archive. Це не означає, що інших способів перегляду немає." :
+        mode==="platforms"?"У цій вибірці немає підтверджених платформ у вибраній країні." :
+        "TMDB не повернув серіалів для вибраних фільтрів.";
     } else byId("exploreEmpty").hidden=true;
   } catch (error) {
     if(session===stateCatalog.session) message(error.message||"Не вдалося отримати каталог.",true);
@@ -295,7 +317,7 @@ function reload() {
   stateCatalog.searched=0;
   stateCatalog.region=DISC.region();
   stateCatalog.type=byId("exploreType").value;
-  byId("exploreType").disabled=byId("exploreMode").value==="downloads";
+  byId("exploreType").disabled=byId("exploreMode").value!=="platforms";
   byId("exploreResults").replaceChildren();
   byId("exploreEmpty").hidden=true;
   byId("exploreMore").hidden=true;
@@ -338,5 +360,6 @@ byId("exploreMode").addEventListener("change",reload);
 byId("exploreSort").addEventListener("change",reload);
 byId("exploreGenre").addEventListener("change",reload);
 byId("exploreRating").addEventListener("change",reload);
+byId("exploreYear").addEventListener("change",reload);
 window.MyCinemaCatalog={reload,open:switchToCatalog};
 })();
