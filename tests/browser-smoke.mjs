@@ -109,6 +109,10 @@ const fakeFetch=async (input,options={})=>{
     return {ok:true,status:200,headers:new Headers({"content-type":"video/mp4",
       "content-length":String(FAKE_BYTES)})};
   }
+  if(!options.method && url===PEER_FILE){
+    return {ok:true,status:200,headers:new Headers({"content-type":"video/mp4",
+      "content-length":String(FAKE_BYTES)}),body:mockStream()};
+  }
   if(url.startsWith("https://api.themoviedb.org/3/discover/tv")){
     latestTmdbDiscoverUrl=url;
     return {ok:true,status:200,json:async()=>({page:1,total_pages:1,total_results:2,results:[
