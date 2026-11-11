@@ -51,6 +51,10 @@ for (const id of [
 ]) assert.match(html, new RegExp('id="' + id + '"'), "Missing #"+id);
 assert.match(catalogScript,/checkProviders/, "Catalog lacks per-show availability verification");
 assert.match(catalogScript,/checkOpenArchive/, "Catalog lacks licensed file verification");
+assert.match(html,/value="all">Усі серіали TMDB<\/option>/,"Full TMDB catalog must be the default view");
+assert.match(html,/id="exploreYear"/,"Optional release-year filter missing");
+assert.doesNotMatch(catalogScript,/1979-12-31|first_air_date\.lte/,"Do not restrict series to the pre-1980 era");
+assert.match(catalogScript,/mode!=="all"/,"Full catalogue must not require video verification before display");
 assert.match(catalogScript,/archiveMatch/, "Catalog cannot surface downloadable sources");
 assert.match(catalogScript,/with_watch_monetization_types/, "Watch-region filter absent");
 assert.match(offlineScript,/createObjectURL/, "Offline file playback missing");
