@@ -21,3 +21,5 @@ The absence of an Internet Archive match **does not mean a show does not exist**
 `node tests/verify.mjs` ensures UI controls, JS syntax and absence of forced pre-1980 filters.
 
 `node tests/browser-smoke.mjs` uses a mocked TMDB response with **2025 and 2026** release dates and asserts both appear in the default catalogue. It also exercises simulated Archive licensing and download logic. Mocked tests do not establish that real third-party servers are reachable.
+
+The default catalogue is tested with mocked 2025 and 2026 series, and no Archive lookup is required to render their cards. Real network availability must still be tested separately.
