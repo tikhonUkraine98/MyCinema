@@ -103,7 +103,7 @@ function renderCard(row, providers, archiveMatch=null) {
     "Знайдено ліцензований файл: "+archiveMatch.item.license.name :
     providers.length ? "Платформи: "+listProviderNames(providers) :
     local ? "Є перевірене локальне відеоджерело" :
-    "Пряме відеоджерело в Internet Archive не підтверджено";
+    "Відеоджерело ще не перевірено — натисни «Шукати відкриті відео»";
   const sourceBadge=node("span","catalog-provider",sourceLabel);
   sourceBadge.classList.add("source-availability-label");
   card.append(sourceBadge);
@@ -210,20 +210,7 @@ async function verifyPage(rows, region, type, session, mode) {
     while(index<rows.length && session===stateCatalog.session){
       const row=rows[index++];
       try {
-        if(mode==="all"){
-          const match=await checkOpenArchive(row);
-          if(session!==stateCatalog.session)return;
-          if(match){
-            confirmed++;
-            const original=stateCatalog.cards.get(row.id);
-            if(original){
-              const updated=renderCard(row,[],match);
-              original.replaceWith(updated);
-              stateCatalog.cards.set(row.id,updated);
-            }
-          }
-          // Do not remove series without an Archive copy: TMDB is the catalogue.
-        } else if(mode==="downloads"){
+        if(mode==="downloads"){
           const match=await checkOpenArchive(row);
           if(match && session===stateCatalog.session) {
             confirmed++;
@@ -292,15 +279,17 @@ async function loadNext() {
         stateCatalog.shown++;
       }
     }
-    if(rows.length)await verifyPage(rows,region,type,session,mode);
+    // Усі серіали TMDB відображаються відразу. Перевірка джерел — окрема дія.
+    if(rows.length && mode!=="all") await verifyPage(rows,region,type,session,mode);
     if(session!==stateCatalog.session)return;
     const remaining=stateCatalog.page<stateCatalog.pages;
     byId("exploreMore").hidden=!remaining;
     message("Переглянуто "+stateCatalog.searched+" серіалів · "+
-      (mode==="all"?"карток у каталозі: ":
+      (mode==="all"?"показано карток: ":
         mode==="downloads"?"з перевіреним відкритим відеофайлом: ":
         "з підтвердженими платформами у "+region+": ")+stateCatalog.shown+
-      ". "+(remaining?"Можна завантажити наступну сторінку.":"Кінець результатів."));
+      ". "+(mode==="all"?"Наявність файлів перевіряється окремо для обраного серіалу. ":"")+
+      (remaining?"Можна завантажити наступну сторінку.":"Кінець результатів."));
     if(!stateCatalog.shown) {
       byId("exploreEmpty").hidden=false;
       byId("exploreEmpty").textContent=mode==="downloads"?
