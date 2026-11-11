@@ -81,9 +81,34 @@ const mockStream=()=>({
     };
   }
 });
+const PEER_UUID="9c9de5e8-0a1e-484a-b099-e80766180a6d";
+const PEER_ORIGIN="https://video.peertube.example";
+const PEER_FILE=PEER_ORIGIN+"/static/web-videos/episode01.mp4";
 let latestTmdbDiscoverUrl="";
 const fakeFetch=async (input,options={})=>{
   const url=String(input);
+  if(url.startsWith("https://sepiasearch.org/api/v1/search/videos")) {
+    return {ok:true,status:200,json:async()=>({data:[{
+      uuid:PEER_UUID,name:"Independent Creative Drama — Episode 1",
+      url:PEER_ORIGIN+"/videos/watch/"+PEER_UUID,
+      privacy:{id:1,label:"Public"},licence:{id:1,label:"Attribution"},
+      duration:1800,isLive:false,nsfw:false,account:{displayName:"Independent Creator"}
+    }]})};
+  }
+  if(url.startsWith(PEER_ORIGIN+"/api/v1/videos/"+PEER_UUID)){
+    return {ok:true,status:200,json:async()=>({
+      uuid:PEER_UUID,name:"Independent Creative Drama — Episode 1",
+      url:PEER_ORIGIN+"/videos/watch/"+PEER_UUID,
+      privacy:{id:1,label:"Public"},licence:{id:1,label:"Attribution"},
+      duration:1800,isLive:false,nsfw:false,downloadEnabled:true,
+      account:{displayName:"Independent Creator"},
+      files:[{size:FAKE_BYTES,fileUrl:PEER_FILE,resolution:{label:"720p"}}]
+    })};
+  }
+  if(options.method==="HEAD" && url===PEER_FILE){
+    return {ok:true,status:200,headers:new Headers({"content-type":"video/mp4",
+      "content-length":String(FAKE_BYTES)})};
+  }
   if(url.startsWith("https://api.themoviedb.org/3/discover/tv")){
     latestTmdbDiscoverUrl=url;
     return {ok:true,status:200,json:async()=>({page:1,total_pages:1,total_results:2,results:[
@@ -124,13 +149,14 @@ const sandbox=vm.createContext({
   Blob,Headers,fetch:fakeFetch
 });
 vm.runInContext(inline,sandbox,{filename:"index-inline.js"});
-for(const path of ["availability.js","discovery.js","catalog.js","downloader.js","sources.js","offline.js"])
+for(const path of ["availability.js","discovery.js","catalog.js","downloader.js","sources.js","peertube.js","offline.js"])
   vm.runInContext(load(path),sandbox,{filename:path});
 assert.ok(window.MyCinemaAvailability);
 assert.ok(window.MyCinemaDiscovery);
 assert.ok(window.MyCinemaCatalog);
 assert.ok(window.MyCinemaDownloader);
 assert.ok(window.MyCinemaSources);
+assert.ok(window.MyCinemaPeerTube);
 assert.ok(window.MyCinemaOffline);
 elements.get("openCatalogExplore").click();
 assert.equal(elements.get("catalogExploreScreen").hidden,false);
@@ -168,6 +194,15 @@ assert.equal(found.length,1);
 assert.equal(found[0].files[0].name,"episode01.mp4");
 const status=await window.MyCinemaSources.checkFile(found[0].files[0].url);
 assert.equal(status.ok,true);
+const peerCandidates=await window.MyCinemaPeerTube.searchCandidates("Independent Creative Drama");
+assert.equal(peerCandidates.items.length,1);
+const verifiedPeer=await window.MyCinemaPeerTube.verifyCandidate(peerCandidates.items[0]);
+assert.equal(verifiedPeer.file.url,PEER_FILE);
+const imported=window.MyCinemaPeerTube.importChecked(verifiedPeer);
+assert.match(imported.title,/Independent Creative Drama/);
+const savedPeer=JSON.parse(localStorage.getItem("my_video_library_v2"));
+assert.equal(savedPeer.series.length,2);
+assert.match(savedPeer.series[1].seasons[0].rights.itemUrl,/video.peertube.example/);
 const browsed=await window.MyCinemaSources.browseOpenEpisodes(1,()=>{});
 assert.equal(browsed.items.length,1);
 assert.equal(browsed.items[0].preVerified.length,1);
@@ -202,4 +237,4 @@ window.MyCinemaOffline.next();
 assert.equal(elements.get("episodeTitle").textContent,"episode02.mp4");
 window.MyCinemaOffline.stop();
 assert.equal(window.MyCinemaOffline.isActive(),false);
-console.log("Browser smoke passed: Archive integration, licensing, offline queue, validated download and duplicate file checks.");
+console.log("Browser smoke passed: Archive, PeerTube federated search and verified MP4, local licence attribution, offline queue and downloads.");
