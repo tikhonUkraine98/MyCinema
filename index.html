@@ -195,15 +195,16 @@
     <section id="catalogExploreScreen" hidden>
       <div class="library-head">
         <div>
-          <p class="eyebrow">Каталог із підтвердженими платформами</p>
+          <p class="eyebrow">Каталог усіх серіалів TMDB</p>
           <h1>Що подивитися</h1>
-          <p class="subtitle">За замовчуванням показуємо лише старі серіали, для яких знайдено файли з відкритою ліцензією та пройшла перевірка відео. Окремо можна переглядати каталог стримінгових платформ.</p>
+          <p class="subtitle">Сучасні й класичні серіали з TMDB, без обмеження за роком. Джерела для перегляду перевіряються окремо: не кожен серіал має доступний для завантаження файл.</p>
         </div>
       </div>
       <form id="exploreFilters" class="catalog-explore-filters">
         <label>Що показувати
           <select id="exploreMode">
-            <option value="downloads">Перевірені відкриті відеофайли</option>
+            <option value="all">Усі серіали TMDB</option>
+            <option value="downloads">Лише з перевіреним відкритим файлом</option>
             <option value="platforms">Доступні на стримінгових платформах</option>
           </select>
         </label>
@@ -225,6 +226,15 @@
         </label>
         <label>Жанр
           <select id="exploreGenre"><option value="">Усі жанри</option></select>
+        </label>
+        <label>Рік виходу
+          <select id="exploreYear">
+            <option value="">Усі роки</option>
+            <option value="2020">З 2020 року</option>
+            <option value="2015">З 2015 року</option>
+            <option value="2010">З 2010 року</option>
+            <option value="2000">З 2000 року</option>
+          </select>
         </label>
         <label>Мінімальна оцінка
           <select id="exploreRating">
@@ -250,7 +260,7 @@
       <div id="exploreResults" class="discovery-grid"></div>
       <p class="empty" id="exploreEmpty" hidden>Наразі немає результатів для цих фільтрів.</p>
       <button id="exploreMore" class="action primary" type="button" hidden>Завантажити ще серіали</button>
-      <p class="foot">Режим відкритих файлів: автоматична перевірка Internet Archive, заявленої ліцензії, MP4/WebM та фрагмента відео (старі серіали до 1980 року). Наявність відкритої ліцензії в метаданих не є юридичною гарантією. Режим платформ: JustWatch через TMDB; це не MP4 і не завантаження.</p>
+      <p class="foot">Основний каталог містить серіали всіх років. Пошук відкритих MP4/WebM через Internet Archive — окрема перевірка з обмеженим покриттям; відсутність файлу в Archive не означає, що серіал ніде не можна подивитися. Режим платформ показує дані JustWatch через TMDB, а не посилання на завантаження.</p>
     </section>
 
     <section id="searchScreen" hidden>
