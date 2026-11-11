@@ -158,6 +158,7 @@
         <button class="action" id="openLibrary" type="button">Бібліотека</button>
         <button class="action" id="openCatalogExplore" type="button">Каталог серіалів</button>
         <button class="action" id="openSources" type="button">Пошук відкритих файлів</button>
+        <button class="action" id="openPeerTube" type="button">PeerTube відео</button>
         <button class="action" id="openSearch" type="button">⌕ Пошук за назвою</button>
         <button class="action" id="openSettings" type="button">⚙ Налаштування</button>
         <button class="action primary" id="addSeries" type="button">+ Додати серіал</button>
@@ -413,7 +414,7 @@ function normalizeState(value) {
       const rr=s.rights;
       const rights=rr && typeof rr==="object" &&
         /^https:\/\/creativecommons\.org\//.test(rr.url||"") &&
-        /^https:\/\/archive\.org\/details\//.test(rr.itemUrl||"") ? {
+        (/^(https:\/\/archive\.org\/details\/|https:\/\/[^/]+\/(?:videos\/watch\/|w\/))/.test(rr.itemUrl||"")) ? {
           name:String(rr.name||"Ліцензія").slice(0,80),
           url:String(rr.url).slice(0,1000),
           creator:String(rr.creator||"").slice(0,180),
@@ -887,11 +888,30 @@ if (state.current) {
     </div>
   </dialog>
 
+
+  <dialog id="peerDialog" aria-labelledby="peerHeading">
+    <div class="dialog-inner">
+      <h2 id="peerHeading" class="dialog-title">PeerTube — пошук відеофайлів</h2>
+      <p class="form-guide">Пошук у федеративному каталозі PeerTube. Показуються публічні відео тривалістю від 15 хвилин із зазначеною CC BY, CC BY-SA або Public Domain ліцензією. Це не каталог сучасних комерційних серіалів.</p>
+      <form id="peerForm" class="search-row">
+        <input id="peerQuery" type="search" placeholder="Назва, тема або оригінальна назва" minlength="3" maxlength="160" required>
+        <button id="peerSubmit" type="submit" class="action primary">Знайти</button>
+      </form>
+      <p class="micro" role="status" aria-live="polite" id="peerStatus"></p>
+      <div id="peerResults" class="peer-results"></div>
+      <div class="dialog-buttons">
+        <button type="button" class="action" id="peerClose">Закрити</button>
+      </div>
+      <p class="micro">PeerTube містить відео, завантажені користувачами. Указана ними ліцензія не завжди підтверджує права на матеріал. Перед завантаженням перевір першоджерело.</p>
+    </div>
+  </dialog>
+
   <script src="./availability.js"></script>
   <script src="./discovery.js"></script>
   <script src="./catalog.js"></script>
   <script src="./downloader.js"></script>
   <script src="./sources.js"></script>
+  <script src="./peertube.js"></script>
   <script src="./offline.js"></script>
 </body>
 </html>
