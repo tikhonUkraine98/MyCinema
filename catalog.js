@@ -8,7 +8,7 @@ let genresLoaded = false;
 const MAX_PROVIDER_CACHE = 300;
 const CACHE_TTL_MS = 30 * 60 * 1000;
 const providerCache = new Map();
-const stateCatalog = {page:0, pages:1, session:0, busy:false, region:"UA", type:"all", shown:0, searched:0};
+const stateCatalog = {page:0, pages:1, session:0, busy:false, region:"UA", type:"all", shown:0, searched:0, cards:new Map()};
 const CATEGORIES = {
   all:"Усі типи доступу",
   free:"Безкоштовно або з рекламою",
@@ -104,7 +104,9 @@ function renderCard(row, providers, archiveMatch=null) {
     providers.length ? "Платформи: "+listProviderNames(providers) :
     local ? "Є перевірене локальне відеоджерело" :
     "Пряме відеоджерело в Internet Archive не підтверджено";
-  card.append(node("span","catalog-provider",sourceLabel));
+  const sourceBadge=node("span","catalog-provider",sourceLabel);
+  sourceBadge.classList.add("source-availability-label");
+  card.append(sourceBadge);
   const buttons=node("div","catalog-result-actions");
   const details=node("button","action","Деталі");
   details.type="button";
@@ -213,12 +215,14 @@ async function verifyPage(rows, region, type, session, mode) {
           if(session!==stateCatalog.session)return;
           if(match){
             confirmed++;
-            stateCatalog.shown++;
-            byId("exploreResults").append(renderCard(row,[],match));
-          } else {
-            // The card was already displayed from TMDB. Do not remove it.
-            // Absence from Archive is not proof that a series cannot be watched elsewhere.
+            const original=stateCatalog.cards.get(row.id);
+            if(original){
+              const updated=renderCard(row,[],match);
+              original.replaceWith(updated);
+              stateCatalog.cards.set(row.id,updated);
+            }
           }
+          // Do not remove series without an Archive copy: TMDB is the catalogue.
         } else if(mode==="downloads"){
           const match=await checkOpenArchive(row);
           if(match && session===stateCatalog.session) {
@@ -282,12 +286,13 @@ async function loadNext() {
     stateCatalog.searched+=rows.length;
     if(mode==="all"){
       for(const row of rows){
-        byId("exploreResults").append(renderCard(row,[]));
+        const card=renderCard(row,[]);
+        byId("exploreResults").append(card);
+        stateCatalog.cards.set(row.id,card);
         stateCatalog.shown++;
       }
-    } else if(rows.length) {
-      await verifyPage(rows,region,type,session,mode);
     }
+    if(rows.length)await verifyPage(rows,region,type,session,mode);
     if(session!==stateCatalog.session)return;
     const remaining=stateCatalog.page<stateCatalog.pages;
     byId("exploreMore").hidden=!remaining;
@@ -315,6 +320,7 @@ function reload() {
   stateCatalog.pages=1;
   stateCatalog.shown=0;
   stateCatalog.searched=0;
+  stateCatalog.cards.clear();
   stateCatalog.region=DISC.region();
   stateCatalog.type=byId("exploreType").value;
   byId("exploreType").disabled=byId("exploreMode").value!=="platforms";
