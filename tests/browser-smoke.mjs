@@ -49,7 +49,7 @@ for(const id of ids){
   const n=new FakeNode(id==="player"?"video":"div");
   n.id=id;
   if(id==="libraryScreen"||id==="searchScreen"||id==="catalogExploreScreen")n.hidden=true;
-  if(id==="exploreMode")n.value="downloads";
+  if(id==="exploreMode")n.value="all";
   if(id==="exploreType")n.value="all";
   if(id==="exploreSort")n.value="popularity.desc";
   if(id==="providerRegion")n.value="UA";
@@ -81,7 +81,15 @@ const mockStream=()=>({
     };
   }
 });
+let latestTmdbDiscoverUrl="";
 const fakeFetch=async (input,options={})=>{
+  if(url.startsWith("https://api.themoviedb.org/3/discover/tv")){
+    latestTmdbDiscoverUrl=url;
+    return {ok:true,status:200,json:async()=>({page:1,total_pages:1,total_results:2,results:[
+      {id:1918,name:"Modern Sci Fi",original_name:"Modern Sci Fi",first_air_date:"2025-01-01",vote_average:8.2,vote_count:200},
+      {id:1927,name:"New Mystery",original_name:"New Mystery",first_air_date:"2026-02-14",vote_average:7.1,vote_count:100}
+    ]})};
+  }
   const url=String(input);
   if(url.startsWith("https://archive.org/advancedsearch.php"))
     return {ok:true,status:200,json:async()=>({response:{docs:[
@@ -127,6 +135,15 @@ assert.ok(window.MyCinemaOffline);
 elements.get("openCatalogExplore").click();
 assert.equal(elements.get("catalogExploreScreen").hidden,false);
 assert.match(elements.get("exploreProgress").textContent,/TMDB/);
+// The default catalogue must show modern series even if no video file exists.
+localStorage.setItem("mycinema_tmdb_token_v1","test-key-for-smoke");
+window.MyCinemaCatalog.reload();
+await new Promise(resolve=>setImmediate(resolve));
+await new Promise(resolve=>setImmediate(resolve));
+assert.equal(elements.get("exploreResults").children.length,2);
+assert.equal(elements.get("exploreResults").children[0].children[1].textContent,"Modern Sci Fi");
+assert.match(latestTmdbDiscoverUrl,/\/discover\/tv/);
+assert.ok(!latestTmdbDiscoverUrl.includes("first_air_date.lte"),"Modern series were filtered out");
 elements.get("openSources").click();
 assert.equal(elements.get("sourceDialog").open,true);
 const {titleMatches,licenseInfo,videoFiles}=window.MyCinemaSources.helpers;
