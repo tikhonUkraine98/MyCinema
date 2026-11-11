@@ -63,3 +63,11 @@
 .source-actions .action{font-size:12px;min-height:34px;padding:7px 11px}
 .source-file-names{color:var(--muted);font-size:11px;overflow-wrap:anywhere;margin:9px 0 0}
 @media(max-width:580px){.source-actions>*{flex:1}.source-card{padding:11px}}
+
+/* Public PeerTube videos */
+#peerDialog{max-width:820px;max-height:90vh;overflow:auto}
+.peer-results{display:grid;gap:12px;margin:16px 0}
+#peerDialog .search-row{margin-top:14px}
+.peer-results .source-card{display:grid;gap:5px}
+.peer-results .source-actions{margin-top:7px}
+@media(max-width:580px){#peerDialog .source-actions>*{flex:1}}
