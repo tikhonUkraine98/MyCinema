@@ -22,6 +22,16 @@ assert.match(availabilityScript, /MAX_BATCH_AUTO/, "Automatic scan limit missing
 const offlineScript = readFileSync(new URL("../offline.js", import.meta.url), "utf8");
 new vm.Script(offlineScript, {filename:"offline.js"});
 assert.match(html, /src="\.\/offline\.js"/, "Offline playback module missing");
+const peerTubeScript = readFileSync(new URL("../peertube.js", import.meta.url), "utf8");
+new vm.Script(peerTubeScript, {filename:"peertube.js"});
+assert.match(html, /src="\.\/peertube\.js"/, "PeerTube provider not attached");
+for(const id of ["openPeerTube","peerDialog","peerForm","peerQuery","peerSubmit",
+  "peerStatus","peerResults","peerClose"]) {
+  assert.match(html,new RegExp('id="' + id + '"'),"Missing PeerTube control #"+id);
+}
+assert.match(peerTubeScript,/sepiasearch\.org\/api\/v1\/search\/videos/,"Federated search API missing");
+assert.match(peerTubeScript,/fileUrl/,"Direct PeerTube file discovery missing");
+assert.match(peerTubeScript,/licenceOf/,"Licence gate missing");
 const sourcesScript = readFileSync(new URL("../sources.js", import.meta.url), "utf8");
 new vm.Script(sourcesScript, {filename:"sources.js"});
 assert.match(html, /src="\.\/sources\.js"/, "Open video source module missing");
