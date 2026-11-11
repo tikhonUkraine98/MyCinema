@@ -20,3 +20,7 @@ This does **not** find subscription-only commercial series. A title match is not
 `node tests/browser-smoke.mjs` should test mocked SepiaSearch results, original-server video detail, HEAD verification, video metadata seek, attribution and library import.
 
 These are mock tests; separately test genuine PeerTube hosts and browser CORS before claiming end-to-end live verification.
+
+## CI regression
+
+The smoke test includes a simulated video file fetched through the PeerTube origin. It validates the complete chain: federated search, origin details, HTTP verification, video seek, library import, attributed source and stream-to-file download. No live third-party service is simulated as an end-to-end integration test.
