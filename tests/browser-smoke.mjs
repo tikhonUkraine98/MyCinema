@@ -83,6 +83,7 @@ const mockStream=()=>({
 });
 let latestTmdbDiscoverUrl="";
 const fakeFetch=async (input,options={})=>{
+  const url=String(input);
   if(url.startsWith("https://api.themoviedb.org/3/discover/tv")){
     latestTmdbDiscoverUrl=url;
     return {ok:true,status:200,json:async()=>({page:1,total_pages:1,total_results:2,results:[
@@ -90,7 +91,6 @@ const fakeFetch=async (input,options={})=>{
       {id:1927,name:"New Mystery",original_name:"New Mystery",first_air_date:"2026-02-14",vote_average:7.1,vote_count:100}
     ]})};
   }
-  const url=String(input);
   if(url.startsWith("https://archive.org/advancedsearch.php"))
     return {ok:true,status:200,json:async()=>({response:{docs:[
       {identifier:"demo-series",title:"Demo Archive Series Episode 1"}
